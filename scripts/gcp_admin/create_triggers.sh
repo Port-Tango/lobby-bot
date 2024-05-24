@@ -15,7 +15,7 @@ then
     --comment-control="COMMENTS_ENABLED_FOR_EXTERNAL_CONTRIBUTORS_ONLY" \
     --build-config="lib/cloudbuild.yaml" \
     --included-files="lib/**,scripts/gitops/**,requirements.txt" \
-    --substitutions=_REGION=$REGION,_BOT_SA=$BOT_SA,_ENV=$env \
+    --substitutions=_REGION=$REGION,_BOT_SA=$BOT_SA,_ENV=$env,_SECRETS_PROJECT_NUMBER=$SECRETS_PROJECT_NUMBER \
     --service-account=projects/$PROJECT_ID/serviceAccounts/$BOT_SA
 fi
 
@@ -29,6 +29,6 @@ then
     --branch-pattern="^main$" \
     --build-config="lib/cloudbuild.yaml" \
     --included-files="lib/**,scripts/gitops/**,requirements.txt" \
-    --substitutions=_REGION=$REGION,_BOT_SA=$BOT_SA,_ENV=$env \
+    --substitutions=_REGION=$REGION,_BOT_SA=$BOT_SA,_ENV=$env,_SECRETS_PROJECT_NUMBER=$SECRETS_PROJECT_NUMBER \
     --service-account=projects/$PROJECT_ID/serviceAccounts/$BOT_SA
 fi
