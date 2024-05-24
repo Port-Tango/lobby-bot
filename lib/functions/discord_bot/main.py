@@ -3,7 +3,8 @@ from flask import abort, jsonify
 from discord import (
   validate_request,
   validate_application_command,
-  bot_response,
+  bot_lobby_response,
+  bot_party_notification,
   bot_error_response,
   bot_error_reply_response,
   Interaction,
@@ -21,7 +22,6 @@ from database import (
   Island,
   Player
 )
-from messages import delete_message
 from utils import wrap_error_message
 
 subcommand_game_type_map = {
@@ -110,26 +110,30 @@ def handler(request):
         error_message = eligibility.get('error_message', 'Lobby joining not allowed')
 
         if not is_eligible:
-          bot_error_reply_response(interaction=interaction, error_message=error_message)
+          bot_error_reply_response(
+            interaction=interaction,
+            error_message=error_message,
+            mention_user_ids=[player.id]
+          )
           abort(400, 'Lobby joining not allowed')
 
         lobby.add_player(player=player)
 
         if lobby.player_count >= lobby.game.min_players:
           lobby.close()
-          delayed_close_delete_lobby(lobby_id=lobby.id, delay_in_seconds=600)
+          bot_party_notification(lobby=lobby)
+          return "OK", 200
 
       elif custom_id == 'leave_lobby' and lobby.status == 'open':
         lobby.remove_player(player=player)
 
         if len(lobby.players) == 0:
           lobby.close()
-          delete_message(message_id=lobby.id)
           return "OK", 200
 
   else:
     raise ValueError('Invalid request type')
 
-  bot_response(interaction=interaction,lobby=lobby)
+  bot_lobby_response(interaction=interaction,lobby=lobby)
 
   return "OK", 200
