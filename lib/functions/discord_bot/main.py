@@ -41,8 +41,8 @@ def handler(request):
   data = request.get_json(silent=True, cache=False)
 
   ## mandatory response to ping request
-  if data['type'] == RequestType.PING:
-    return jsonify({'type': ResponseType.PONG})
+  if data['type'] == RequestType.PING.value:
+    return jsonify({'type': ResponseType.PONG.value})
 
   interaction = Interaction(**data)
 
