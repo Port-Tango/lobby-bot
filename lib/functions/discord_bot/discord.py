@@ -128,7 +128,7 @@ def validate_application_command(data, interaction):
     )
     abort(400, DiscordErrorType.COMMAND_IN_THREAD.value)
 
-  if data['LOBBY_CHANNEL'] != LOBBY_CHANNEL:
+  if data['channel_id'] != LOBBY_CHANNEL:
     bot_error_response(
       interaction=interaction,
       error_message=wrap_error_message(DiscordErrorType.INVALID_CHANNEL.value)
