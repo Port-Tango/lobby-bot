@@ -1,0 +1,155 @@
+steps:
+# for each function in lib/functions:
+# bundle the function source code and common utilities together
+# structure directory in conformance with 
+# https://cloud.google.com/functions/docs/writing#directory-structure
+- id: 'bundle-function-sources'
+  name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: /bin/bash
+  args:
+  - '-c'
+  - |
+    mkdir -p $_BUNDLE_PATH
+    for dir in $_FUNCTIONS_PATH/*/; do
+      FUNCTION=$(basename "$$dir")
+      cp -R $_FUNCTIONS_PATH/$$FUNCTION/ $_BUNDLE_PATH/$$FUNCTION
+      cp -R lib/common/python/* $_BUNDLE_PATH/$$FUNCTION
+      cp requirements.txt $_BUNDLE_PATH/$$FUNCTION
+    done
+  waitFor: ['-']
+# for each bundled function:
+# lint the function python code using pylint
+- id: 'lint-function-sources'
+  name: 'python:3.10'
+  entrypoint: /bin/bash
+  args:
+  - '-c'
+  - |
+    if [ $_ENV != "prod" ]
+    then
+      python -m venv venv_linter
+      source venv_linter/bin/activate
+      pip install -r requirements.txt
+      PIDS=()
+      for dir in $_BUNDLE_PATH/*/; do
+        FUNCTION=$(basename "$$dir")
+        pylint $$dir/*.py \
+          --indent-string="  " \
+          --indent-after-paren=2 \
+          --load-plugins pylint_pydantic \
+          --extension-pkg-whitelist='pydantic' \
+          --disable=missing-docstring,broad-except \
+          --max-branches=15 \
+          --max-locals=25 &
+        PIDS+=($!)
+      done
+      for pid in "${PIDS[@]}"; do
+        wait "$pid"
+        if [ $? -ne 0 ]; then
+          exit 1
+        fi
+      done
+      deactivate
+      rm -rf venv_linter/
+    fi
+  waitFor: ['bundle-function-sources']
+# for each bundled function:
+# deploy function asynchronously and wait for all functions to be deployed
+- id: 'deploy-functions'
+  name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: /bin/bash
+  args:
+    - '-c'
+    - |
+      if [ $_ENV != "prod" ]
+      then
+        BOT_TOKEN=$$DEV_LOBBY_BOT_TOKEN
+        CHANNEL_ID=$$DEV_LOBBY_BOT_CHANNEL_ID
+        BOT_PUBLIC_KEY=$$DEV_LOBBY_BOT_PUBLIC_KEY
+        BOT_APP_ID=$$DEV_LOBBY_BOT_APP_ID
+      fi
+
+      ENV_VARS=(
+        "PROJECT_ID=$PROJECT_ID"
+        "REGION=$_REGION"
+        "BOT_TOKEN=$$BOT_TOKEN"
+        "CHANNEL_ID=$$CHANNEL_ID"
+        "BOT_PUBLIC_KEY=$$BOT_PUBLIC_KEY"
+        "BOT_APP_ID=$$BOT_APP_ID"
+      )
+
+      PIDS=()
+
+      deploy_function() {
+        FUNCTION=$1
+        SERVICE_ACCOUNT=$2
+        TRIGGER_ARGS=$3
+        MEMORY=$4
+        OPTIONAL_ARG_1=$5
+        OPTIONAL_ARG_2=$6
+        OPTIONAL_ARG_3=$7
+        gcloud functions deploy $$FUNCTION \
+          --entry-point handler \
+          --project=$PROJECT_ID \
+          --region=$_REGION \
+          --source=$_BUNDLE_PATH/$$FUNCTION \
+          --gen2 \
+          --max-instances=100 \
+          --service-account=$$SERVICE_ACCOUNT \
+          $$TRIGGER_ARGS \
+          --runtime=python310 \
+          --memory=$$MEMORY \
+          --set-env-vars="$(IFS=,; echo "${ENV_VARS[*]}")" \
+          $$OPTIONAL_ARG_1 \
+          $$OPTIONAL_ARG_2 \
+          $$OPTIONAL_ARG_3 &
+        PIDS+=($!)
+      }
+
+      deploy_function discord_bot $_BOT_SA --trigger-http "512MB" --allow-unauthenticated
+      deploy_function delete_message $_BOT_SA --trigger-http "256MB"
+      deploy_function close_delete_lobby $_BOT_SA --trigger-http "256MB"
+      deploy_function cleanup_channel $_BOT_SA --trigger-http "256MB"
+      deploy_function close_open_lobbies $_BOT_SA --trigger-http "256MB"
+
+      for pid in "${PIDS[@]}"; do
+        wait "$pid"
+        if [ $? -ne 0 ]; then
+          echo "Function deployment failed."
+          exit 1
+        fi
+      done
+      echo "All functions deployed successfully."
+  secretEnv: 
+    - 'DEV_LOBBY_BOT_TOKEN'
+    - 'DEV_LOBBY_BOT_CHANNEL_ID'
+    - 'DEV_LOBBY_BOT_PUBLIC_KEY'
+    - 'DEV_LOBBY_BOT_APP_ID'
+  waitFor: ['lint-function-sources']
+- id: 'create-or-update-scheduler-job'
+  name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: /bin/bash
+  args:
+    - '-c'
+    - |
+      if [ $_ENV != "prod" ]
+      then
+        bash scripts/gitops/deploy_schedule.sh cleanup_channel "* * * * *" $_BOT_SA $_REGION $PROJECT_ID
+      fi
+  waitFor: ['deploy-functions']
+substitutions:
+  _FUNCTIONS_PATH: 'lib/functions'
+  _BUNDLE_PATH: '/workspace/bundled_functions'
+availableSecrets:
+  secretManager:
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/dev_lobby_bot_token/versions/1
+    env: 'DEV_LOBBY_BOT_TOKEN'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/dev_lobby_bot_channel_id/versions/1
+    env: 'DEV_LOBBY_BOT_CHANNEL_ID'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/dev_lobby_bot_public_key/versions/1
+    env: 'DEV_LOBBY_BOT_PUBLIC_KEY'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/dev_lobby_bot_app_id/versions/1
+    env: 'DEV_LOBBY_BOT_APP_ID'
+serviceAccount: 'projects/$PROJECT_ID/serviceAccounts/$_BOT_SA'
+options:
+  logging: CLOUD_LOGGING_ONLY
