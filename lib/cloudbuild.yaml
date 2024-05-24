@@ -61,12 +61,28 @@ steps:
   args:
     - '-c'
     - |
-      if [ $_ENV != "prod" ]
+      if [ $_ENV = "dev" ]
       then
         BOT_TOKEN=$$DEV_LOBBY_BOT_TOKEN
         CHANNEL_ID=$$DEV_LOBBY_BOT_CHANNEL_ID
         BOT_PUBLIC_KEY=$$DEV_LOBBY_BOT_PUBLIC_KEY
         BOT_APP_ID=$$DEV_LOBBY_BOT_APP_ID
+      fi
+
+      if [ $_ENV = "test" ]
+      then
+        BOT_TOKEN=$$TEST_LOBBY_BOT_TOKEN
+        CHANNEL_ID=$$TEST_LOBBY_BOT_CHANNEL_ID
+        BOT_PUBLIC_KEY=$$TEST_LOBBY_BOT_PUBLIC_KEY
+        BOT_APP_ID=$$TEST_LOBBY_BOT_APP_ID
+      fi
+
+      if [ $_ENV = "prod" ]
+      then
+        BOT_TOKEN=$$PROD_LOBBY_BOT_TOKEN
+        CHANNEL_ID=$$PROD_LOBBY_BOT_CHANNEL_ID
+        BOT_PUBLIC_KEY=$$PROD_LOBBY_BOT_PUBLIC_KEY
+        BOT_APP_ID=$$PROD_LOBBY_BOT_APP_ID
       fi
 
       ENV_VARS=(
@@ -125,6 +141,14 @@ steps:
     - 'DEV_LOBBY_BOT_CHANNEL_ID'
     - 'DEV_LOBBY_BOT_PUBLIC_KEY'
     - 'DEV_LOBBY_BOT_APP_ID'
+    - 'TEST_LOBBY_BOT_TOKEN'
+    - 'TEST_LOBBY_BOT_CHANNEL_ID'
+    - 'TEST_LOBBY_BOT_PUBLIC_KEY'
+    - 'TEST_LOBBY_BOT_APP_ID'
+    - 'PROD_LOBBY_BOT_TOKEN'
+    - 'PROD_LOBBY_BOT_CHANNEL_ID'
+    - 'PROD_LOBBY_BOT_PUBLIC_KEY'
+    - 'PROD_LOBBY_BOT_APP_ID'
   waitFor: ['lint-function-sources']
 - id: 'create-or-update-scheduler-job'
   name: 'gcr.io/cloud-builders/gcloud'
@@ -150,6 +174,22 @@ availableSecrets:
     env: 'DEV_LOBBY_BOT_PUBLIC_KEY'
   - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/dev_lobby_bot_app_id/versions/1
     env: 'DEV_LOBBY_BOT_APP_ID'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/test_lobby_bot_token/versions/1
+    env: 'TEST_LOBBY_BOT_TOKEN'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/test_lobby_bot_channel_id/versions/1
+    env: 'TEST_LOBBY_BOT_CHANNEL_ID'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/test_lobby_bot_public_key/versions/1
+    env: 'TEST_LOBBY_BOT_PUBLIC_KEY'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/test_lobby_bot_app_id/versions/1
+    env: 'TEST_LOBBY_BOT_APP_ID'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/prod_lobby_bot_token/versions/1
+    env: 'PROD_LOBBY_BOT_TOKEN'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/prod_lobby_bot_channel_id/versions/1
+    env: 'PROD_LOBBY_BOT_CHANNEL_ID'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/prod_lobby_bot_public_key/versions/1
+    env: 'PROD_LOBBY_BOT_PUBLIC_KEY'
+  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/prod_lobby_bot_app_id/versions/1
+    env: 'PROD_LOBBY_BOT_APP_ID'
 serviceAccount: 'projects/$PROJECT_ID/serviceAccounts/$_BOT_SA'
 options:
   logging: CLOUD_LOGGING_ONLY
