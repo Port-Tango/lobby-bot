@@ -26,6 +26,7 @@ select env in prod test dev; do
 done
 echo "Get the GCP project region, id and number"
 PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+SECRETS_PROJECT_NUMBER=$(gcloud projects describe $PROD_PROJECT_ID --format='value(projectNumber)')
 BOT_SA=$BOT_SA_PREFIX@$PROJECT_ID.iam.gserviceaccount.com
 echo "bot service account: $BOT_SA"
 echo "project: $PROJECT_ID"

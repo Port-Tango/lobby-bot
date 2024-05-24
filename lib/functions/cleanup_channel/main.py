@@ -5,7 +5,7 @@ from utils import calc_age_seconds
 
 @functions_framework.http
 def handler(request):
-  print(request.get_json())
+  # pylint: disable=unused-argument
   messages_to_delete = []
   messages = get_messages()
   for message in messages:
