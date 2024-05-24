@@ -7,13 +7,14 @@ from pydantic import BaseModel
 from nacl.exceptions import BadSignatureError
 from nacl.signing import VerifyKey
 from database import Lobby
-from utils import wrap_error_message
+from utils import wrap_error_message, user_mentions_single_line, user_mentions_bulleted_list
 from messages import delayed_delete_message
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 BOT_PUBLIC_KEY = os.getenv('BOT_PUBLIC_KEY')
 BOT_APP_ID = os.getenv('BOT_APP_ID')
-CHANNEL_ID = os.getenv('CHANNEL_ID')
+LOBBY_CHANNEL = os.getenv('LOBBY_CHANNEL')
+PARTY_CHANNEL = os.getenv('PARTY_CHANNEL')
 BASE_URL = 'https://discord.com/api/v10'
 
 headers = {
@@ -54,35 +55,6 @@ def validate_request(request):
     return False
   return True
 
-def validate_application_command(data, interaction):
-  if data['channel']['type'] == ChannelType.PUBLIC_THREAD.value:
-    bot_error_response(
-      interaction=interaction,
-      error_message=wrap_error_message(DiscordErrorType.COMMAND_IN_THREAD.value)
-    )
-    abort(400, DiscordErrorType.COMMAND_IN_THREAD.value)
-
-  if data['channel_id'] != CHANNEL_ID:
-    bot_error_response(
-      interaction=interaction,
-      error_message=wrap_error_message(DiscordErrorType.INVALID_CHANNEL.value)
-    )
-    abort(400, DiscordErrorType.INVALID_CHANNEL.value)
-
-  if data['data']['name'] != 'lobby':
-    bot_error_response(
-      interaction=interaction,
-      error_message=wrap_error_message(DiscordErrorType.INVALID_COMMAND.value)
-    )
-    abort(400, DiscordErrorType.INVALID_COMMAND.value)
-
-  if data['data']['options'][0]['name'] != 'create':
-    bot_error_response(
-      interaction=interaction,
-      error_message=wrap_error_message(DiscordErrorType.INVALID_SUBCOMMAND_GROUP.value)
-    )
-    abort(400, DiscordErrorType.INVALID_SUBCOMMAND_GROUP.value)
-
 def get_message_id(interaction_token: str) -> str:
   url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction_token}/messages/@original'
   initial_response = requests.get(url)
@@ -121,13 +93,25 @@ class Interaction(BaseModel):
   class Config:
     validate_assignment = True
 
-def bot_error_reply_response(interaction: Interaction, error_message: str):
-  url = f'{BASE_URL}/channels/{CHANNEL_ID}/messages'
-  json = {'content': error_message, 'message_reference': {'message_id': interaction.message_id}}
+def bot_reply_response(interaction: Interaction, json: dict) -> str:
+  url = f'{BASE_URL}/channels/{LOBBY_CHANNEL}/messages'
+  json = {**json,**{'message_reference': {'message_id': interaction.message_id}}}
   reply_response = requests.post(url, json=json, headers=headers)
   reply_response.raise_for_status()
   reply_response_json = reply_response.json()
-  delayed_delete_message(message_id=reply_response_json['id'], delay_in_seconds=20)
+  return reply_response_json['id']
+
+def bot_error_reply_response(
+    interaction: Interaction,
+    error_message: str,
+    mention_user_ids: Optional[list] = None
+  ):
+  json={'content': error_message}
+  if mention_user_ids:
+    mentions = user_mentions_single_line(mention_user_ids)
+    json['content'] += f'\n{mentions}'
+  message_id = bot_reply_response(interaction=interaction, json=json)
+  delayed_delete_message(message_id, delay_in_seconds=20)
 
 def bot_error_response(interaction: Interaction, error_message: str):
   url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}/messages/@original'
@@ -136,10 +120,38 @@ def bot_error_response(interaction: Interaction, error_message: str):
   reply_response.raise_for_status()
   delayed_delete_message(message_id=interaction.message_id, delay_in_seconds=20)
 
-def bot_response(interaction: Interaction, lobby: Lobby):
-  url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}/messages/@original'
+def validate_application_command(data, interaction):
+  if data['channel']['type'] == ChannelType.PUBLIC_THREAD.value:
+    bot_error_response(
+      interaction=interaction,
+      error_message=wrap_error_message(DiscordErrorType.COMMAND_IN_THREAD.value)
+    )
+    abort(400, DiscordErrorType.COMMAND_IN_THREAD.value)
 
-  open_components = [
+  if data['channel_id'] != LOBBY_CHANNEL:
+    bot_error_response(
+      interaction=interaction,
+      error_message=wrap_error_message(DiscordErrorType.INVALID_CHANNEL.value)
+    )
+    abort(400, DiscordErrorType.INVALID_CHANNEL.value)
+
+  if data['data']['name'] != 'lobby':
+    bot_error_response(
+      interaction=interaction,
+      error_message=wrap_error_message(DiscordErrorType.INVALID_COMMAND.value)
+    )
+    abort(400, DiscordErrorType.INVALID_COMMAND.value)
+
+  if data['data']['options'][0]['name'] != 'create':
+    bot_error_response(
+      interaction=interaction,
+      error_message=wrap_error_message(DiscordErrorType.INVALID_SUBCOMMAND_GROUP.value)
+    )
+    abort(400, DiscordErrorType.INVALID_SUBCOMMAND_GROUP.value)
+
+def bot_lobby_response(interaction: Interaction, lobby: Lobby):
+  url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}/messages/@original'
+  components = [
     {
       'type': 1,
       'components': [
@@ -158,8 +170,20 @@ def bot_response(interaction: Interaction, lobby: Lobby):
       ]
     }
   ]
+  participants = '\n* '.join(lobby.player_names)
+  content = f'A new **{lobby.game.game_type}** lobby'
+  content += f' has been created for **{lobby.island.name}**!'
+  content += '\n**Players in lobby:** '
+  content += f'({lobby.player_count}/{lobby.game.min_players})'
+  content += f'\n* {participants}'
+  content += '\n**Lobby status:**\n```diff\n+ OPEN\n```'
+  json = {'content': content, 'components': components}
+  reply_response = requests.patch(url, json=json)
+  reply_response.raise_for_status()
 
-  closed_components = [
+def bot_party_notification(lobby: Lobby):
+  url = f'{BASE_URL}/channels/{PARTY_CHANNEL}/messages'
+  components = [
     {
       'type': 1,
       'components': [
@@ -172,22 +196,11 @@ def bot_response(interaction: Interaction, lobby: Lobby):
       ]
     }
   ]
-
-  participants = '\n* '.join(lobby.player_names)
-  content = f'A new **{lobby.game.game_type}** lobby'
-  content += f' has been created on **{lobby.island.name}**!'
-  content += '\n**Players in lobby:** '
-  content += f'({lobby.player_count}/{lobby.game.min_players})'
-  content += f'\n* {participants}'
-  json = {'content': content}
-
-  if lobby.status == 'open':
-    json['content'] += '\n**Lobby status:**\n```diff\n+ OPEN\n```'
-    json['components'] = open_components
-  elif lobby.status == 'closed':
-    mentions = ' '.join([f'<@{player_id}>' for player_id in lobby.player_ids])
-    json['content'] += '\n**Lobby status:**\n```diff\n- CLOSED\n```\n'+mentions
-    json['components'] = closed_components
-
-  reply_response = requests.patch(url, json=json)
+  mentions = user_mentions_bulleted_list(lobby.player_ids)
+  content = f'A new **{lobby.game.game_type}** party of {lobby.game.min_players}'
+  content += ' players has been matched!'
+  content += f'\nIsland: **{lobby.island.name}**!'
+  content += f'\n**Party:** {mentions}'
+  json = {'content': content,'components': components}
+  reply_response = requests.post(url, json=json, headers=headers)
   reply_response.raise_for_status()

@@ -7,6 +7,7 @@ from firebase_admin import firestore
 from pydantic import BaseModel, validator, ValidationError
 from utils import now_iso_str, wrap_error_message
 from cloud_tasks import create_http_task
+from messages import delete_message
 
 REGION = os.getenv('REGION')
 PROJECT_ID = os.getenv('PROJECT_ID')
@@ -98,6 +99,7 @@ class Lobby(BaseModel):
   def close(self):
     self.status = 'closed'
     self.update()
+    delete_message(message_id=self.id)
 
   def add_player(self, player: Player):
     if player not in self.players:
