@@ -17,7 +17,7 @@
     - type: 'Spyhunt'
       is_featured: true
 - id: 'dc238f42-0aaa-4a5d-81d7-3e834c493a29'
-  name: 'THE BLOOM ROOM'
+  name: 'Zombie Island'
   games:
     - type: 'Zombies'
       is_featured: true

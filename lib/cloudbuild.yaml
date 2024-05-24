@@ -156,10 +156,7 @@ steps:
   args:
     - '-c'
     - |
-      if [ $_ENV != "prod" ]
-      then
-        bash scripts/gitops/deploy_schedule.sh cleanup_channel "* * * * *" $_BOT_SA $_REGION $PROJECT_ID
-      fi
+      bash scripts/gitops/deploy_schedule.sh cleanup_channel "* * * * *" $_BOT_SA $_REGION $PROJECT_ID
   waitFor: ['deploy-functions']
 substitutions:
   _FUNCTIONS_PATH: 'lib/functions'
