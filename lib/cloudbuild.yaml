@@ -68,6 +68,8 @@ steps:
         PARTY_CHANNEL=$$DEV_LOBBY_BOT_PARTY_CHANNEL
         BOT_PUBLIC_KEY=$$DEV_LOBBY_BOT_PUBLIC_KEY
         BOT_APP_ID=$$DEV_LOBBY_BOT_APP_ID
+        MIN_INSTANCES="--min-instances=0"
+        MAX_INSTANCES="--max-instances=1"
       fi
 
       if [ $_ENV = "test" ]
@@ -77,6 +79,8 @@ steps:
         PARTY_CHANNEL=$$TEST_LOBBY_BOT_PARTY_CHANNEL
         BOT_PUBLIC_KEY=$$TEST_LOBBY_BOT_PUBLIC_KEY
         BOT_APP_ID=$$TEST_LOBBY_BOT_APP_ID
+        MIN_INSTANCES="--min-instances=0"
+        MAX_INSTANCES="--max-instances=1"
       fi
 
       if [ $_ENV = "prod" ]
@@ -86,6 +90,8 @@ steps:
         PARTY_CHANNEL=$$PROD_LOBBY_BOT_PARTY_CHANNEL
         BOT_PUBLIC_KEY=$$PROD_LOBBY_BOT_PUBLIC_KEY
         BOT_APP_ID=$$PROD_LOBBY_BOT_APP_ID
+        MIN_INSTANCES="--min-instances=1"
+        MAX_INSTANCES="--max-instances=1"
       fi
 
       ENV_VARS=(
@@ -114,7 +120,6 @@ steps:
           --region=$_REGION \
           --source=$_BUNDLE_PATH/$$FUNCTION \
           --gen2 \
-          --max-instances=100 \
           --service-account=$$SERVICE_ACCOUNT \
           $$TRIGGER_ARGS \
           --runtime=python310 \
@@ -126,7 +131,7 @@ steps:
         PIDS+=($!)
       }
 
-      deploy_function discord_bot $_BOT_SA --trigger-http "512MB" --allow-unauthenticated
+      deploy_function discord_bot $_BOT_SA --trigger-http "256MB" --allow-unauthenticated $$MIN_INSTANCES $$MAX_INSTANCES
       deploy_function delete_message $_BOT_SA --trigger-http "256MB"
       deploy_function close_delete_lobby $_BOT_SA --trigger-http "256MB"
       deploy_function cleanup_channel $_BOT_SA --trigger-http "256MB"
