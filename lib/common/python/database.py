@@ -11,7 +11,7 @@ from messages import delete_message
 
 REGION = os.getenv('REGION')
 PROJECT_ID = os.getenv('PROJECT_ID')
-GAME_TYPES = ['FFA DM', 'CTF', 'Spyhunt', 'Zombies']
+GAME_TYPES = ['FFA DM', 'CTF', 'Spy Hunt', 'Zombies']
 
 class LobbyErrorType(Enum):
   PLAYER_IN_OTHER_LOBBY = 'player is in another open lobby'

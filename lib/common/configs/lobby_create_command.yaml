@@ -1,0 +1,23 @@
+command: "lobby"
+subcommand_group: "create"
+game_modes:
+  spy_hunt:
+    type: "Spy Hunt"
+    min_players: 2
+    max_players: 10
+    player_count_step: 1
+  ctf:
+    type: "CTF"
+    min_players: 2
+    max_players: 10
+    player_count_step: 2
+  dm_ffa:
+    type: "FFA DM"
+    min_players: 2
+    max_players: 10
+    player_count_step: 1
+  zombies:
+    type: "Zombies"
+    min_players: 5
+    max_players: 10
+    player_count_step: 1
