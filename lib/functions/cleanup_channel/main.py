@@ -1,13 +1,16 @@
+import os
 import functions_framework
 from database import get_lobby
 from messages import get_messages, delete_message, bulk_delete_messages
 from utils import calc_age_seconds
 
+LOBBY_CHANNEL = os.getenv('LOBBY_CHANNEL')
+
 @functions_framework.http
 def handler(request):
   # pylint: disable=unused-argument
   messages_to_delete = []
-  messages = get_messages()
+  messages = get_messages(channel_id=LOBBY_CHANNEL)
   for message in messages:
     message_id = message.get('id')
     is_bot = message['author'].get('bot', False)
@@ -33,9 +36,9 @@ def handler(request):
         messages_to_delete.append(message_id)
 
   if len(messages_to_delete) == 1:
-    delete_message(message_id=messages_to_delete[0])
+    delete_message(channel_id=LOBBY_CHANNEL, message_id=messages_to_delete[0])
 
   if len(messages_to_delete) > 1:
-    bulk_delete_messages(messages=messages_to_delete)
+    bulk_delete_messages(channel_id=LOBBY_CHANNEL, messages=messages_to_delete)
 
   return "OK", 200

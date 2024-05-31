@@ -5,6 +5,7 @@ from messages import delete_message
 from pydantic import BaseModel, ValidationError
 
 class CloseDeleteLobbyRequest(BaseModel):
+  channel_id: str
   lobby_id: str
   only_if_open: Optional[bool] = False
 
@@ -22,6 +23,6 @@ def handler(request):
     return "OK", 200
 
   lobby.close()
-  delete_message(message_id=config.lobby_id)
+  delete_message(channel_id=config.channel_id, message_id=config.lobby_id)
 
   return "OK", 200

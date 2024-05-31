@@ -66,6 +66,7 @@ class Island(BaseModel):
 
 class Lobby(BaseModel):
   id: str
+  channel_id: str
   creation_time: str = now_iso_str()
   creator: Player
   game: Game
@@ -99,7 +100,7 @@ class Lobby(BaseModel):
   def close(self):
     self.status = 'closed'
     self.update()
-    delete_message(message_id=self.id)
+    delete_message(channel_id=self.channel_id, message_id=self.id)
 
   def add_player(self, player: Player):
     if player not in self.players:
@@ -201,6 +202,7 @@ def get_player_join_eligibility(player: Player, lobby: Lobby) -> Dict:
   return {'eligibility': True}
 
 def delayed_close_delete_lobby(
+  channel_id: str,
   lobby_id: str,
   delay_in_seconds: int,
   only_if_open: Optional[bool] = False
@@ -209,6 +211,6 @@ def delayed_close_delete_lobby(
   create_http_task(
     queue='delayed-task-queue',
     url=url,
-    json_payload={'lobby_id': lobby_id, 'only_if_open': only_if_open},
+    json_payload={'channel_id': channel_id, 'lobby_id': lobby_id, 'only_if_open': only_if_open},
     delay_in_seconds=delay_in_seconds
   )

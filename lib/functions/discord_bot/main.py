@@ -78,6 +78,7 @@ def handler(request):
 
       lobby = Lobby(
         id=interaction.message_id,
+        channel_id=interaction.channel.id,
         creator=player,
         game=game,
         island=island,
@@ -94,7 +95,12 @@ def handler(request):
         abort(400, 'Lobby creation not allowed')
 
       lobby.create()
-      delayed_close_delete_lobby(lobby_id=lobby.id, delay_in_seconds=1200, only_if_open=True)
+      delayed_close_delete_lobby(
+        channel_id=lobby.channel_id,
+        lobby_id=lobby.id,
+        delay_in_seconds=1200,
+        only_if_open=True
+      )
 
   elif data['type'] == RequestType.MESSAGE_COMPONENT.value:
     interaction.ack(response_type=ResponseType.DEFERRED_UPDATE_MESSAGE.value)

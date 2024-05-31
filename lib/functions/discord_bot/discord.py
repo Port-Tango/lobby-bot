@@ -61,9 +61,14 @@ def get_message_id(interaction_token: str) -> str:
   initial_response_json = initial_response.json()
   return initial_response_json['id']
 
+class Channel(BaseModel):
+  id: str
+  name: str
+
 class Interaction(BaseModel):
   id: str
   token: str
+  channel: Channel
   acked: Optional[bool] = False
   message_id: Optional[str] = None
 
@@ -111,14 +116,22 @@ def bot_error_reply_response(
     mentions = user_mentions_single_line(mention_user_ids)
     json['content'] += f'\n{mentions}'
   message_id = bot_reply_response(interaction=interaction, json=json)
-  delayed_delete_message(message_id, delay_in_seconds=20)
+  delayed_delete_message(
+    channel_id=interaction.channel.id,
+    message_id=message_id,
+    delay_in_seconds=20
+  )
 
 def bot_error_response(interaction: Interaction, error_message: str):
   url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}/messages/@original'
   json = {'content': error_message}
   reply_response = requests.patch(url, json=json)
   reply_response.raise_for_status()
-  delayed_delete_message(message_id=interaction.message_id, delay_in_seconds=20)
+  delayed_delete_message(
+    channel_id=interaction.channel.id,
+    message_id=interaction.message_id,
+    delay_in_seconds=20
+  )
 
 def validate_application_command(data, interaction):
   if data['channel']['type'] == ChannelType.PUBLIC_THREAD.value:
