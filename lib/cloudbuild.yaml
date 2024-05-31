@@ -14,6 +14,7 @@ steps:
       FUNCTION=$(basename "$$dir")
       cp -R $_FUNCTIONS_PATH/$$FUNCTION/ $_BUNDLE_PATH/$$FUNCTION
       cp -R lib/common/python/* $_BUNDLE_PATH/$$FUNCTION
+      cp -R lib/common/configs/* $_BUNDLE_PATH/$$FUNCTION
       cp requirements.txt $_BUNDLE_PATH/$$FUNCTION
     done
   waitFor: ['-']
@@ -136,6 +137,7 @@ steps:
       deploy_function close_delete_lobby $_BOT_SA --trigger-http "256MB"
       deploy_function cleanup_channel $_BOT_SA --trigger-http "256MB"
       deploy_function close_open_lobbies $_BOT_SA --trigger-http "256MB"
+      deploy_function update_commands $_BOT_SA --trigger-http "256MB"
 
       for pid in "${PIDS[@]}"; do
         wait "$pid"
@@ -162,6 +164,22 @@ steps:
     - 'PROD_LOBBY_BOT_PUBLIC_KEY'
     - 'PROD_LOBBY_BOT_APP_ID'
   waitFor: ['lint-function-sources']
+- id: 'update-commands'
+  name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      RESPONSE=$(gcloud functions call update_commands --region=$_REGION --project=$PROJECT_ID)
+      RESPONSE=$(echo "$$RESPONSE" | tr -d '[:space:]')
+      echo "Full response: $$RESPONSE"
+      if [ "$$RESPONSE" = "OK" ]; then
+        echo "Cloud Function call succeeded with response 'OK'."
+      else
+        echo "Cloud Function call failed. Response: $$RESPONSE"
+        exit 1
+      fi
+  waitFor: ['deploy-functions']
 - id: 'create-or-update-scheduler-job'
   name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: /bin/bash

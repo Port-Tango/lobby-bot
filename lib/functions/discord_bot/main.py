@@ -26,7 +26,7 @@ from utils import wrap_error_message
 
 subcommand_game_type_map = {
   'ctf': 'CTF',
-  'spyhunt': 'Spyhunt',
+  'spy_hunt': 'Spy Hunt',
   'zombies': 'Zombies',
   'dm_ffa': 'FFA DM'
 }

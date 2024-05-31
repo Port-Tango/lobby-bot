@@ -1,28 +1,27 @@
 - id: 'ef023e57-2e5f-40af-b826-aa23f430e3b7'
   name: 'Liquidity Pool'
   games:
-    - type: 'FFA DM'
+    - game_type: 'FFA DM'
       is_featured: true
-    - type: 'CTF'
+    - game_type: 'CTF'
       is_featured: true
-    - type: 'Spyhunt'
+    - game_type: 'Spy Hunt'
       is_featured: true
 - id: '51fb649f-e1fb-45f0-9de0-ec5aa041bbb4'
   name: 'Tangos Wild West'
   games:
-    - type: 'FFA DM'
+    - game_type: 'FFA DM'
       is_featured: true
-    - type: 'CTF'
+    - game_type: 'CTF'
       is_featured: true
-    - type: 'Spyhunt'
+    - game_type: 'Spy Hunt'
       is_featured: true
 - id: 'dc238f42-0aaa-4a5d-81d7-3e834c493a29'
   name: 'Zombie Island'
   games:
-    - type: 'Zombies'
+    - game_type: 'Zombies'
       is_featured: true
-    - type: 'FFA DM'
+    - game_type: 'FFA DM'
       is_featured: true
-    - type: 'Spyhunt'
+    - game_type: 'Spy Hunt'
       is_featured: false
-
