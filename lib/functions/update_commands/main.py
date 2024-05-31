@@ -7,16 +7,13 @@ from database import Island
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 BOT_APP_ID = os.getenv('BOT_APP_ID')
 
-# Discord API URL for your bot's commands
 url = f"https://discord.com/api/v10/applications/{BOT_APP_ID}/commands"
 
-# Discord bot token
 headers = {
   "Authorization": f"Bot {BOT_TOKEN}",
   "Content-Type": "application/json"
 }
 
-# Load configurations from YAML files
 with open('islands.yaml', 'r', encoding='utf-8') as file:
   islands_config = yaml.safe_load(file)
 
@@ -25,10 +22,8 @@ with open('lobby_create_command.yaml', 'r', encoding='utf-8') as file:
 
 game_modes = lobby_create_config['game_modes']
 
-# create Island objects from the islands_config
 islands = [Island(**island) for island in islands_config]
 
-# Function to create island choices
 def create_island_choices(game_type):
   choices = []
   for island in islands:
@@ -37,11 +32,9 @@ def create_island_choices(game_type):
         choices.append({"name": island.name, "value": island.id})
   return choices
 
-# Function to create player count choices
 def create_player_count_choices(min_players, max_players, step):
   return [{"name": str(i), "value": i} for i in range(min_players, max_players + 1, step)]
 
-# Construct the JSON body for the slash command
 commands = [
   {
     "name": lobby_create_config['command'],
