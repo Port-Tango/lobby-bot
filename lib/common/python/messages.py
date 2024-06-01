@@ -1,6 +1,8 @@
 import os
+from typing import Optional
 import requests
 from cloud_tasks import create_http_task
+from interactions import Interaction
 
 REGION = os.getenv('REGION')
 PROJECT_ID = os.getenv('PROJECT_ID')
@@ -31,11 +33,18 @@ def bulk_delete_messages(channel_id, messages):
   response = requests.post(url, headers=headers, json=payload)
   response.raise_for_status()
 
-def delayed_delete_message(channel_id, message_id, delay_in_seconds):
-  url=f'https://{REGION}-{PROJECT_ID}.cloudfunctions.net/delete_message'
+def delayed_delete_ephemeral_message(
+  interaction: Interaction,
+  delay_in_seconds: int,
+  message_id: Optional[str] = None
+):
+  url=f'https://{REGION}-{PROJECT_ID}.cloudfunctions.net/delete_ephemeral_message'
   create_http_task(
     queue='delayed-task-queue',
     url=url,
-    json_payload={'channel_id': channel_id, 'message_id': message_id},
+    json_payload={
+      'interaction': interaction.dict(),
+      'message_id': message_id
+    },
     delay_in_seconds=delay_in_seconds
   )

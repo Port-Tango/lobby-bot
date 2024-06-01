@@ -2,34 +2,21 @@ import functions_framework
 from flask import abort, jsonify
 from discord import (
   validate_request,
-  validate_application_command,
   bot_lobby_response,
   bot_party_notification,
-  bot_error_response,
-  bot_error_reply_response,
+  bot_error_followup_response,
   Interaction,
   RequestType,
   ResponseType,
-  DiscordErrorType
+  DiscordErrorType,
 )
 from database import (
+  get_player,
   get_lobby,
-  get_lobby_creation_eligibility,
   get_player_join_eligibility,
-  delayed_close_delete_lobby,
-  Lobby,
-  Game,
-  Island,
   Player
 )
-from utils import wrap_error_message
-
-subcommand_game_type_map = {
-  'ctf': 'CTF',
-  'spy_hunt': 'Spy Hunt',
-  'zombies': 'Zombies',
-  'dm_ffa': 'FFA DM'
-}
+from subcommand import handle_subcommand, Subcommand
 
 @functions_framework.http
 def handler(request):
@@ -46,61 +33,35 @@ def handler(request):
 
   interaction = Interaction(**data)
 
-  player = None
   if 'member' in data:
-    player = Player(
-      id=data['member']['user']['id'],
-      name=data['member']['user']['global_name']
-    )
+    player_id = data['member']['user']['id']
+    player = get_player(player_id=player_id)
+    if not player:
+      player = Player(
+        id=data['member']['user']['id'],
+        name=data['member']['user']['global_name']
+      )
+      player.create()
+    else:
+      player.set_name(data['member']['user']['global_name'])
 
   if data['type'] == RequestType.APPLICATION_COMMAND.value:
-    interaction.ack(response_type=ResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE.value)
+    subcommand_group = data['data']['options'][0]
 
-    if player:
-      validate_application_command(data=data, interaction=interaction)
-      subcommand = data['data']['options'][0]['options'][0]['name']
-      if subcommand not in subcommand_game_type_map:
-        bot_error_response(
-          interaction=interaction,
-          error_message=wrap_error_message(DiscordErrorType.INVALID_SUBCOMMAND.value)
-        )
-        abort(400, DiscordErrorType.INVALID_SUBCOMMAND.value)
+    subcommand_data = {
+      'interaction': interaction,
+      'command': data['data']['name'],
+      'subcommand_group': subcommand_group['name'],
+      'subcommand': subcommand_group['options'][0]['name'],
+      'param1': subcommand_group['options'][0]['options'][0]['value']
+    }
 
-      island_id = data['data']['options'][0]['options'][0]['options'][0]['value']
-      island = Island(id=island_id)
-      island.get_url()
+    if len(subcommand_group['options'][0]['options']) > 1:
+      subcommand_data['param2'] = subcommand_group['options'][0]['options'][1]['value']
 
-      min_players = data['data']['options'][0]['options'][0]['options'][1]['value']
-      game = Game(
-        game_type=subcommand_game_type_map[subcommand],
-        min_players=min_players
-      )
-
-      lobby = Lobby(
-        id=interaction.message_id,
-        channel_id=interaction.channel.id,
-        creator=player,
-        game=game,
-        island=island,
-        players=[player],
-        status='open'
-      )
-
-      eligibility = get_lobby_creation_eligibility(lobby=lobby)
-      is_eligible = eligibility.get('eligibility', False)
-      error_message = eligibility.get('error_message', 'Lobby creation not allowed')
-
-      if not is_eligible:
-        bot_error_response(interaction=interaction, error_message=error_message)
-        abort(400, 'Lobby creation not allowed')
-
-      lobby.create()
-      delayed_close_delete_lobby(
-        channel_id=lobby.channel_id,
-        lobby_id=lobby.id,
-        delay_in_seconds=1200,
-        only_if_open=True
-      )
+    subcommand = Subcommand(**subcommand_data)
+    print(subcommand.dict())
+    handle_subcommand(subcommand=subcommand, player=player)
 
   elif data['type'] == RequestType.MESSAGE_COMPONENT.value:
     interaction.ack(response_type=ResponseType.DEFERRED_UPDATE_MESSAGE.value)
@@ -116,10 +77,9 @@ def handler(request):
         error_message = eligibility.get('error_message', 'Lobby joining not allowed')
 
         if not is_eligible:
-          bot_error_reply_response(
+          bot_error_followup_response(
             interaction=interaction,
-            error_message=error_message,
-            mention_user_ids=[player.id]
+            error_message=error_message
           )
           abort(400, 'Lobby joining not allowed')
 
@@ -137,9 +97,9 @@ def handler(request):
           lobby.close()
           return "OK", 200
 
+      bot_lobby_response(interaction=interaction,lobby=lobby)
+
   else:
     raise ValueError('Invalid request type')
-
-  bot_lobby_response(interaction=interaction,lobby=lobby)
 
   return "OK", 200

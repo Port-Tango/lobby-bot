@@ -12,6 +12,9 @@ def now_iso_str():
 def wrap_error_message(message: str):
   return f'```diff\n- {message}\n```'
 
+def wrap_success_message(message: str):
+  return f'```diff\n+ {message}\n```'
+
 def user_mentions_single_line(user_ids):
   return ' '.join([f'<@{user_id}>' for user_id in user_ids])
 

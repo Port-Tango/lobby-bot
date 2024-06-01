@@ -1,0 +1,22 @@
+name: "set"
+type: 2
+description: "Sets in-game information for Discord user for matchmaking"
+options:
+  - name: "username"
+    type: 1
+    description: "Sets your in-game username. Example: blairbear"
+    options:
+      - name: "username"
+        description: "The name of island where game will be hosted"
+        type: 3
+        required: true
+  - name: "island"
+    type: 1
+    description: "Sets your island id. Example: ef023e57-2e5f-40af-b826-aa23f430e3b7"
+    options:
+      - name: "id"
+        description: "The name of island where game will be hosted"
+        min_length: 36
+        max_length: 36
+        type: 3
+        required: true

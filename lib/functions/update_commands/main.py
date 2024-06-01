@@ -17,8 +17,11 @@ headers = {
 with open('islands.yaml', 'r', encoding='utf-8') as file:
   islands_config = yaml.safe_load(file)
 
-with open('lobby_create_command.yaml', 'r', encoding='utf-8') as file:
+with open('lobby_create.yaml', 'r', encoding='utf-8') as file:
   lobby_create_config = yaml.safe_load(file)
+
+with open('lobby_set.yaml', 'r', encoding='utf-8') as file:
+  set_subcommand_group = yaml.safe_load(file)
 
 game_modes = lobby_create_config['game_modes']
 
@@ -38,8 +41,8 @@ def create_player_count_choices(min_players, max_players, step):
 commands = [
   {
     "name": lobby_create_config['command'],
-    "description": "Main command to create lobbies",
-    "options": []
+    "description": "Main command to summon LobbyBot",
+    "options": [set_subcommand_group]
   }
 ]
 

@@ -1,14 +1,12 @@
 import os
-from typing import Optional
 from enum import Enum
 import requests
-from flask import abort
-from pydantic import BaseModel
 from nacl.exceptions import BadSignatureError
 from nacl.signing import VerifyKey
 from database import Lobby
-from utils import wrap_error_message, user_mentions_single_line, user_mentions_bulleted_list
-from messages import delayed_delete_message
+from utils import user_mentions_bulleted_list
+from messages import delayed_delete_ephemeral_message
+from interactions import Interaction
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 BOT_PUBLIC_KEY = os.getenv('BOT_PUBLIC_KEY')
@@ -32,9 +30,6 @@ class ResponseType(Enum):
   DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
   DEFERRED_UPDATE_MESSAGE = 6
 
-class ChannelType(Enum):
-  PUBLIC_THREAD	= 11
-
 class DiscordErrorType(Enum):
   INVALID_SIGNATURE = 'Invalid signature'
   COMMAND_IN_THREAD = 'Command was used in a thread'
@@ -55,112 +50,36 @@ def validate_request(request):
     return False
   return True
 
-def get_message_id(interaction_token: str) -> str:
-  url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction_token}/messages/@original'
-  initial_response = requests.get(url)
-  initial_response_json = initial_response.json()
-  return initial_response_json['id']
-
-class Channel(BaseModel):
-  id: str
-  name: str
-
-class Interaction(BaseModel):
-  id: str
-  token: str
-  channel: Channel
-  acked: Optional[bool] = False
-  message_id: Optional[str] = None
-
-  def get_message_id(self):
-    url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{self.token}/messages/@original'
-    if not self.acked:
-      raise ValueError('Interaction must be acknowledged before getting message ID')
-    initial_response = requests.get(url)
-    initial_response_json = initial_response.json()
-    self.message_id = initial_response_json['id']
-
-  def ack(self, response_type):
-    url = f'{BASE_URL}/interactions/{self.id}/{self.token}/callback'
-
-    json = {
-      'type': response_type,
-      'data': {
-        'tts': False
-      }
-    }
-
-    reply_response = requests.post(url, json=json)
-    reply_response.raise_for_status()
-    self.acked = True
-    self.get_message_id()
-
-  class Config:
-    validate_assignment = True
-
-def bot_reply_response(interaction: Interaction, json: dict) -> str:
-  url = f'{BASE_URL}/channels/{LOBBY_CHANNEL}/messages'
-  json = {**json,**{'message_reference': {'message_id': interaction.message_id}}}
+def bot_followup_response(interaction: Interaction, ephemeral: bool, json: dict):
+  url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}'
+  if ephemeral:
+    json['flags'] = 64
   reply_response = requests.post(url, json=json, headers=headers)
   reply_response.raise_for_status()
   reply_response_json = reply_response.json()
+  message_id = reply_response_json['id']
+  if ephemeral:
+    delayed_delete_ephemeral_message(
+      interaction=interaction,
+      delay_in_seconds=20,
+      message_id=message_id
+    )
   return reply_response_json['id']
 
-def bot_error_reply_response(
-    interaction: Interaction,
-    error_message: str,
-    mention_user_ids: Optional[list] = None
-  ):
-  json={'content': error_message}
-  if mention_user_ids:
-    mentions = user_mentions_single_line(mention_user_ids)
-    json['content'] += f'\n{mentions}'
-  message_id = bot_reply_response(interaction=interaction, json=json)
-  delayed_delete_message(
-    channel_id=interaction.channel.id,
-    message_id=message_id,
-    delay_in_seconds=20
-  )
+def bot_error_followup_response(
+  interaction: Interaction,
+  error_message: str,
+  ephemeral: bool = True
+):
+  json = {'content': error_message}
+  bot_followup_response(interaction=interaction, ephemeral=ephemeral, json=json)
 
 def bot_error_response(interaction: Interaction, error_message: str):
   url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}/messages/@original'
   json = {'content': error_message}
   reply_response = requests.patch(url, json=json)
   reply_response.raise_for_status()
-  delayed_delete_message(
-    channel_id=interaction.channel.id,
-    message_id=interaction.message_id,
-    delay_in_seconds=20
-  )
-
-def validate_application_command(data, interaction):
-  if data['channel']['type'] == ChannelType.PUBLIC_THREAD.value:
-    bot_error_response(
-      interaction=interaction,
-      error_message=wrap_error_message(DiscordErrorType.COMMAND_IN_THREAD.value)
-    )
-    abort(400, DiscordErrorType.COMMAND_IN_THREAD.value)
-
-  if data['channel_id'] != LOBBY_CHANNEL:
-    bot_error_response(
-      interaction=interaction,
-      error_message=wrap_error_message(DiscordErrorType.INVALID_CHANNEL.value)
-    )
-    abort(400, DiscordErrorType.INVALID_CHANNEL.value)
-
-  if data['data']['name'] != 'lobby':
-    bot_error_response(
-      interaction=interaction,
-      error_message=wrap_error_message(DiscordErrorType.INVALID_COMMAND.value)
-    )
-    abort(400, DiscordErrorType.INVALID_COMMAND.value)
-
-  if data['data']['options'][0]['name'] != 'create':
-    bot_error_response(
-      interaction=interaction,
-      error_message=wrap_error_message(DiscordErrorType.INVALID_SUBCOMMAND_GROUP.value)
-    )
-    abort(400, DiscordErrorType.INVALID_SUBCOMMAND_GROUP.value)
+  delayed_delete_ephemeral_message(interaction=interaction, delay_in_seconds=20)
 
 def bot_lobby_response(interaction: Interaction, lobby: Lobby):
   url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}/messages/@original'

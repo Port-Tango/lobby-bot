@@ -133,7 +133,7 @@ steps:
       }
 
       deploy_function discord_bot $_BOT_SA --trigger-http "256MB" --allow-unauthenticated $$MIN_INSTANCES $$MAX_INSTANCES
-      deploy_function delete_message $_BOT_SA --trigger-http "256MB"
+      deploy_function delete_ephemeral_message $_BOT_SA --trigger-http "256MB"
       deploy_function close_delete_lobby $_BOT_SA --trigger-http "256MB"
       deploy_function cleanup_channel $_BOT_SA --trigger-http "256MB"
       deploy_function close_open_lobbies $_BOT_SA --trigger-http "256MB"
