@@ -1,10 +1,16 @@
 import os
+from enum import Enum
 from typing import Optional
 import requests
 from pydantic import BaseModel
 
 BOT_APP_ID = os.getenv('BOT_APP_ID')
 BASE_URL = 'https://discord.com/api/v10'
+
+class ResponseType(Enum):
+  PONG = 1
+  DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
+  DEFERRED_UPDATE_MESSAGE = 6
 
 def get_message_id(interaction_token: str) -> str:
   url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction_token}/messages/@original'
@@ -48,6 +54,18 @@ class Interaction(BaseModel):
     reply_response.raise_for_status()
     self.acked = True
     self.get_message_id()
+
+  def ack_application_command(self, ephemeral=False):
+    self.ack(
+      response_type=ResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE.value,
+      ephemeral=ephemeral
+    )
+
+  def ack_message_component(self, ephemeral=False):
+    self.ack(
+      response_type=ResponseType.DEFERRED_UPDATE_MESSAGE.value,
+      ephemeral=ephemeral
+    )
 
   class Config:
     validate_assignment = True
