@@ -1,11 +1,8 @@
 import os
 from typing import Optional, Any
 from discord import (
-  bot_error_response,
   bot_lobby_response,
   bot_followup_response,
-  Interaction,
-  ResponseType,
   DiscordErrorType
 )
 from database import (
@@ -20,6 +17,7 @@ from database import (
 from flask import abort
 from pydantic import BaseModel, ValidationError, validator
 from utils import now_iso_str, wrap_error_message, wrap_success_message
+from interactions import Interaction, ResponseType
 
 LOBBY_CHANNEL = os.getenv('LOBBY_CHANNEL')
 
@@ -29,6 +27,18 @@ subcommand_game_type_map = {
   'zombies': 'Zombies',
   'dm_ffa': 'FFA DM'
 }
+
+def handle_subcommand_error(interaction: Interaction, error: DiscordErrorType):
+  interaction.ack(
+    response_type=ResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE.value,
+    ephemeral=True
+  )
+  bot_followup_response(
+    interaction=interaction,
+    ephemeral=True,
+    json={'content': wrap_error_message(error.value)}
+  )
+  abort(400, error.value)
 
 class Subcommand(BaseModel):
   interaction: Interaction
@@ -45,33 +55,21 @@ class Subcommand(BaseModel):
   @validator('interaction', always=True, pre=True)
   def validate_channel_id(cls, interaction):
     if interaction.channel.id != LOBBY_CHANNEL:
-      bot_error_response(
-        interaction=interaction,
-        error_message=wrap_error_message(DiscordErrorType.INVALID_CHANNEL.value)
-      )
-      abort(400, DiscordErrorType.INVALID_CHANNEL.value)
+      handle_subcommand_error(interaction, DiscordErrorType.INVALID_CHANNEL)
     return interaction
 
   @validator('command', always=True, pre=True)
   def validate_command(cls, command, values):
     interaction = values.get('interaction')
     if command != 'lobby':
-      bot_error_response(
-        interaction=interaction,
-        error_message=wrap_error_message(DiscordErrorType.INVALID_COMMAND.value)
-      )
-      abort(400, DiscordErrorType.INVALID_COMMAND.value)
+      handle_subcommand_error(interaction, DiscordErrorType.INVALID_COMMAND)
     return command
 
   @validator('subcommand_group', always=True, pre=True)
   def validate_subcommand_group(cls, subcommand_group, values):
     interaction = values.get('interaction')
     if subcommand_group not in ['create', 'set']:
-      bot_error_response(
-        interaction=interaction,
-        error_message=wrap_error_message(DiscordErrorType.INVALID_SUBCOMMAND_GROUP.value)
-      )
-      abort(400, DiscordErrorType.INVALID_SUBCOMMAND_GROUP.value)
+      handle_subcommand_error(interaction, DiscordErrorType.INVALID_SUBCOMMAND_GROUP)
     return subcommand_group
 
   @validator('island_id', always=True, pre=True)
@@ -101,15 +99,12 @@ class Subcommand(BaseModel):
   def set_game_type(cls, game_type, values):
     subcommand_group = values.get('subcommand_group')
     subcommand = values.get('subcommand')
+    interaction = values.get('interaction')
     if subcommand_group == 'create':
       if subcommand in subcommand_game_type_map:
         game_type = subcommand_game_type_map[subcommand]
       else:
-        bot_error_response(
-          interaction=values.get('interaction'),
-          error_message=wrap_error_message(DiscordErrorType.INVALID_SUBCOMMAND.value)
-        )
-        abort(400, DiscordErrorType.INVALID_SUBCOMMAND.value)
+        handle_subcommand_error(interaction, DiscordErrorType.INVALID_SUBCOMMAND)
     if game_type and game_type not in GAME_TYPES:
       raise ValidationError('Invalid game type')
     return game_type
@@ -129,16 +124,15 @@ def handle_subcommand(subcommand: Subcommand, player: Player):
     error_message = eligibility.get('error_message', 'Lobby creation not allowed')
 
     if not is_eligible:
-      subcommand.interaction.ack(
-        response_type=ResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE.value,
-        ephemeral=True
+      subcommand.interaction.ack_application_command(ephemeral=True)
+      bot_followup_response(
+        interaction=subcommand.interaction,
+        ephemeral=True,
+        json={'content': error_message}
       )
-      bot_error_response(interaction=subcommand.interaction, error_message=error_message)
       abort(400, 'Lobby creation not allowed')
 
-    subcommand.interaction.ack(
-      response_type=ResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE.value
-    )
+    subcommand.interaction.ack_application_command()
 
     lobby = Lobby(
       id=subcommand.interaction.message_id,
@@ -163,10 +157,7 @@ def handle_subcommand(subcommand: Subcommand, player: Player):
     )
 
   if subcommand.subcommand_group == 'set' and subcommand.subcommand == 'username':
-    subcommand.interaction.ack(
-      response_type=ResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE.value,
-      ephemeral=True
-    )
+    subcommand.interaction.ack_application_command(ephemeral=True)
     player.set_username(subcommand.username)
     bot_followup_response(
       interaction=subcommand.interaction,
@@ -175,10 +166,7 @@ def handle_subcommand(subcommand: Subcommand, player: Player):
     )
 
   if subcommand.subcommand_group == 'set' and subcommand.subcommand == 'island':
-    subcommand.interaction.ack(
-      response_type=ResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE.value,
-      ephemeral=True
-    )
+    subcommand.interaction.ack_application_command(ephemeral=True)
     island = Island(id=subcommand.island_id)
     island.get_url()
     player.set_island(island)

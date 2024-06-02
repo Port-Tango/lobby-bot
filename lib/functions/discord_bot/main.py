@@ -4,10 +4,9 @@ from discord import (
   validate_request,
   bot_lobby_response,
   bot_party_notification,
-  bot_error_followup_response,
+  bot_followup_response,
   Interaction,
   RequestType,
-  ResponseType,
   DiscordErrorType,
 )
 from database import (
@@ -17,6 +16,7 @@ from database import (
   Player
 )
 from subcommand import handle_subcommand, Subcommand
+from interactions import ResponseType
 
 @functions_framework.http
 def handler(request):
@@ -77,9 +77,10 @@ def handler(request):
         error_message = eligibility.get('error_message', 'Lobby joining not allowed')
 
         if not is_eligible:
-          bot_error_followup_response(
+          bot_followup_response(
             interaction=interaction,
-            error_message=error_message
+            ephemeral=True,
+            json={'content': error_message}
           )
           abort(400, 'Lobby joining not allowed')
 

@@ -25,11 +25,6 @@ class RequestType(Enum):
   APPLICATION_COMMAND = 2
   MESSAGE_COMPONENT = 3
 
-class ResponseType(Enum):
-  PONG = 1
-  DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
-  DEFERRED_UPDATE_MESSAGE = 6
-
 class DiscordErrorType(Enum):
   INVALID_SIGNATURE = 'Invalid signature'
   COMMAND_IN_THREAD = 'Command was used in a thread'
@@ -65,21 +60,6 @@ def bot_followup_response(interaction: Interaction, ephemeral: bool, json: dict)
       message_id=message_id
     )
   return reply_response_json['id']
-
-def bot_error_followup_response(
-  interaction: Interaction,
-  error_message: str,
-  ephemeral: bool = True
-):
-  json = {'content': error_message}
-  bot_followup_response(interaction=interaction, ephemeral=ephemeral, json=json)
-
-def bot_error_response(interaction: Interaction, error_message: str):
-  url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}/messages/@original'
-  json = {'content': error_message}
-  reply_response = requests.patch(url, json=json)
-  reply_response.raise_for_status()
-  delayed_delete_ephemeral_message(interaction=interaction, delay_in_seconds=20)
 
 def bot_lobby_response(interaction: Interaction, lobby: Lobby):
   url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}/messages/@original'
