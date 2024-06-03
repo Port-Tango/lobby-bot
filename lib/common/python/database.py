@@ -218,7 +218,7 @@ def get_lobby_error_message(
   message = f'You tried to {action.value} a lobby for {game.game_type}'
   if island:
     message += f' on {island.name}'
-  message += f'but were denied because {error_type.value}.'
+  message += f' but were denied because {error_type.value}.'
   if error_type not in [LobbyErrorType.NO_IN_GAME_USERNAME, LobbyErrorType.NO_ISLAND]:
     message += f' Shame on you, {player.name}! Shame! Shame! Shame!'
   return wrap_error_message(message)
