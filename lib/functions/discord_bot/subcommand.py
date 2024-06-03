@@ -15,7 +15,7 @@ from database import (
   Lobby
 )
 from flask import abort
-from pydantic import BaseModel, ValidationError, validator
+from pydantic import BaseModel, validator
 from utils import now_iso_str, wrap_error_message, wrap_success_message
 from interactions import Interaction, ResponseType
 
@@ -25,7 +25,8 @@ subcommand_game_type_map = {
   'ctf': 'CTF',
   'spy_hunt': 'Spy Hunt',
   'zombies': 'Zombies',
-  'dm_ffa': 'FFA DM'
+  'dm_ffa': 'FFA DM',
+  'train': 'Visit Train'
 }
 
 def handle_subcommand_error(interaction: Interaction, error: DiscordErrorType):
@@ -76,15 +77,19 @@ class Subcommand(BaseModel):
   def set_island_id(cls, island_id, values):
     subcommand_group = values.get('subcommand_group')
     subcommand = values.get('subcommand')
-    if (subcommand_group == 'set' and subcommand == 'island') or subcommand_group == 'create':
+    if ((subcommand_group == 'set' and subcommand == 'island') or
+      (subcommand_group == 'create' and subcommand != 'train')):
       island_id = values.get('param1')
     return island_id
 
   @validator('min_players', always=True, pre=True)
   def set_min_players(cls, min_players, values):
     subcommand_group = values.get('subcommand_group')
-    if subcommand_group == 'create':
+    subcommand = values.get('subcommand')
+    if subcommand_group == 'create' and subcommand != 'train':
       min_players = values.get('param2')
+    if subcommand_group == 'create' and subcommand == 'train':
+      min_players = values.get('param1')
     return min_players
 
   @validator('username', always=True, pre=True)
@@ -106,13 +111,15 @@ class Subcommand(BaseModel):
       else:
         handle_subcommand_error(interaction, DiscordErrorType.INVALID_SUBCOMMAND)
     if game_type and game_type not in GAME_TYPES:
-      raise ValidationError('Invalid game type')
+      raise ValueError('Invalid game type')
     return game_type
 
 def handle_subcommand(subcommand: Subcommand, player: Player):
   if subcommand.subcommand_group == 'create':
-    island = Island(id=subcommand.island_id)
-    island.get_url()
+    island = None
+    if subcommand.island_id:
+      island = Island(id=subcommand.island_id)
+      island.get_url()
 
     game = Game(
       game_type=subcommand.game_type,

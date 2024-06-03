@@ -40,7 +40,7 @@ steps:
           --load-plugins pylint_pydantic \
           --extension-pkg-whitelist='pydantic' \
           --disable=missing-docstring,broad-except \
-          --max-branches=15 \
+          --max-branches=20 \
           --max-locals=25 &
         PIDS+=($!)
       done

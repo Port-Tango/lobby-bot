@@ -1,20 +1,23 @@
 import os
+import random
 from typing import Optional, List, Dict
 from enum import Enum
 import requests
 import firebase_admin
 from firebase_admin import firestore
-from pydantic import BaseModel, validator, ValidationError
+from pydantic import BaseModel, validator
 from utils import now_iso_str, wrap_error_message
 from cloud_tasks import create_http_task
 from messages import delete_message
 
 REGION = os.getenv('REGION')
 PROJECT_ID = os.getenv('PROJECT_ID')
-GAME_TYPES = ['FFA DM', 'CTF', 'Spy Hunt', 'Zombies']
+GAME_TYPES = ['FFA DM', 'CTF', 'Spy Hunt', 'Zombies', 'Visit Train']
 
 class LobbyErrorType(Enum):
   PLAYER_IN_OTHER_LOBBY = 'you are in another open lobby'
+  NO_IN_GAME_USERNAME = 'you have not yet set your in-game username using "/lobby set username"'
+  NO_ISLAND = 'you have not yet set your island using "/lobby set island"'
   GAME_TYPE_EXISTS = 'an open lobby already exists for game type'
 
 class LobbyActionType(Enum):
@@ -32,7 +35,7 @@ class Game(BaseModel):
   @validator('game_type', always=True, pre=True)
   def validate_type(cls, game_type):
     if game_type not in GAME_TYPES:
-      raise ValidationError('Invalid game type')
+      raise ValueError('Invalid game type')
     return game_type
 
   class Config:
@@ -96,7 +99,7 @@ class Lobby(BaseModel):
   creation_time: str = now_iso_str()
   creator: Player
   game: Game
-  island: Island
+  island: Optional[Island] = None
   status: str
   players: list[Player]
   player_count: Optional[int] = None
@@ -148,6 +151,32 @@ class Lobby(BaseModel):
       self.players.remove(player)
       self.update()
 
+  def randomize_players(self):
+    random.shuffle(self.players)
+    self.update()
+
+  def get_party_list(
+    self,
+    numbered: Optional[bool] = False,
+    include_island: Optional[bool] = False
+  ):
+    list_str = ''
+    if numbered:
+      for i, player in enumerate(self.players, start=1):
+        list_str += f'\n{i}. <@{player.id}>'
+        if player.username:
+          list_str += f' | 👤: **{player.username}**'
+        if include_island and player.island:
+          list_str += f' | 🏝️: [{player.island.name}]({player.island.url})'
+    else:
+      for player in self.players:
+        list_str += f'\n* <@{player.id}>'
+        if player.username:
+          list_str += f' | 👤: **{player.username}**'
+        if include_island and player.island:
+          list_str += f' | 🏝️: [{player.island.name}]({player.island.url})'
+    return list_str
+
   class Config:
     validate_assignment = True
 
@@ -182,18 +211,44 @@ def get_lobby_game_types(lobbies: List[Lobby]) -> List[str]:
 def get_lobby_error_message(
   player: Player,
   game: Game,
-  island: Island,
+  island: Optional[Island],
   error_type: LobbyErrorType,
   action: LobbyActionType
 ) -> str:
   message = f'You tried to {action.value} a lobby for {game.game_type}'
-  message += f' on {island.name} but were denied because {error_type.value}.'
-  message += f' Shame on you, {player.name}! Shame! Shame! Shame!'
+  if island:
+    message += f' on {island.name}'
+  message += f'but were denied because {error_type.value}.'
+  if error_type not in [LobbyErrorType.NO_IN_GAME_USERNAME, LobbyErrorType.NO_ISLAND]:
+    message += f' Shame on you, {player.name}! Shame! Shame! Shame!'
   return wrap_error_message(message)
 
 def get_lobby_creation_eligibility(player: Player, game: Game, island: Island) -> Dict:
-  open_lobbies = get_open_lobbies()
+  if not player.username:
+    return {
+      'eligibility': False,
+      'error_message': get_lobby_error_message(
+        player=player,
+        game=game,
+        island=island,
+        error_type=LobbyErrorType.NO_IN_GAME_USERNAME,
+        action=LobbyActionType.CREATE
+      )
+    }
 
+  if game.game_type == 'Visit Train' and not player.island:
+    return {
+      'eligibility': False,
+      'error_message': get_lobby_error_message(
+        player=player,
+        game=game,
+        island=island,
+        error_type=LobbyErrorType.NO_ISLAND,
+        action=LobbyActionType.CREATE
+      )
+    }
+
+  open_lobbies = get_open_lobbies()
   player_ids = get_lobby_players(open_lobbies)
   if player.id in player_ids:
     return {
@@ -223,8 +278,31 @@ def get_lobby_creation_eligibility(player: Player, game: Game, island: Island) -
   return {'eligibility': True}
 
 def get_player_join_eligibility(player: Player, lobby: Lobby) -> Dict:
-  open_lobbies = get_open_lobbies()
+  if not player.username:
+    return {
+      'eligibility': False,
+      'error_message': get_lobby_error_message(
+        player=player,
+        game=lobby.game,
+        island=lobby.island,
+        error_type=LobbyErrorType.NO_IN_GAME_USERNAME,
+        action=LobbyActionType.JOIN
+      )
+    }
 
+  if lobby.game.game_type == 'Visit Train' and not player.island:
+    return {
+      'eligibility': False,
+      'error_message': get_lobby_error_message(
+        player=player,
+        game=lobby.game,
+        island=lobby.island,
+        error_type=LobbyErrorType.NO_ISLAND,
+        action=LobbyActionType.CREATE
+      )
+    }
+
+  open_lobbies = get_open_lobbies()
   player_ids = get_lobby_players(lobbies=open_lobbies, exclusion_lobby=lobby)
   if player.id in player_ids:
     return {

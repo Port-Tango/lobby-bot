@@ -87,6 +87,8 @@ def handler(request):
         lobby.add_player(player=player)
 
         if lobby.player_count >= lobby.game.min_players:
+          if lobby.game.game_type == 'Visit Train':
+            lobby.randomize_players()
           lobby.close()
           bot_party_notification(lobby=lobby)
           return "OK", 200

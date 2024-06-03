@@ -4,14 +4,12 @@ import requests
 from nacl.exceptions import BadSignatureError
 from nacl.signing import VerifyKey
 from database import Lobby
-from utils import user_mentions_bulleted_list
 from messages import delayed_delete_ephemeral_message
 from interactions import Interaction
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 BOT_PUBLIC_KEY = os.getenv('BOT_PUBLIC_KEY')
 BOT_APP_ID = os.getenv('BOT_APP_ID')
-LOBBY_CHANNEL = os.getenv('LOBBY_CHANNEL')
 PARTY_CHANNEL = os.getenv('PARTY_CHANNEL')
 BASE_URL = 'https://discord.com/api/v10'
 
@@ -82,37 +80,56 @@ def bot_lobby_response(interaction: Interaction, lobby: Lobby):
       ]
     }
   ]
-  participants = '\n* '.join(lobby.player_names)
-  content = f'A new **{lobby.game.game_type}** lobby'
-  content += f' has been created for **{lobby.island.name}**!'
+  content = f'A new **{lobby.game.game_type}** lobby has been created'
+  if lobby.island:
+    content += f' for **{lobby.island.name}**!'
   content += '\n**Players in lobby:** '
   content += f'({lobby.player_count}/{lobby.game.min_players})'
-  content += f'\n* {participants}'
+  content += lobby.get_party_list(numbered=False, include_island=False)
   content += '\n**Lobby status:**\n```diff\n+ OPEN\n```'
-  json = {'content': content, 'components': components}
+  json = {
+    'content': content,
+    'components': components,
+    'flags': 4 # supress embeds
+  }
   reply_response = requests.patch(url, json=json)
   reply_response.raise_for_status()
 
 def bot_party_notification(lobby: Lobby):
   url = f'{BASE_URL}/channels/{PARTY_CHANNEL}/messages'
+  if lobby.game.game_type == 'Visit Train':
+    starting_island = lobby.players[0].island
+    button_label = '🏝️ Join Starting Island 🏝️'
+    button_url = starting_island.url
+  else:
+    button_label = f'🏝️ Join {lobby.island.name} 🏝️'
+    button_url = lobby.island.url
   components = [
     {
       'type': 1,
       'components': [
         {
           'type': 2,
-          'label': 'Join Game Island',
+          'label': button_label,
           'style': 5,
-          'url': lobby.island.url
+          'url': button_url
         }
       ]
     }
   ]
-  mentions = user_mentions_bulleted_list(lobby.player_ids)
   content = f'A new **{lobby.game.game_type}** party of {lobby.game.min_players}'
   content += ' players has been matched!'
-  content += f'\nIsland: **{lobby.island.name}**!'
-  content += f'\n**Party:** {mentions}'
-  json = {'content': content,'components': components}
+  if lobby.game.game_type == 'Visit Train':
+    content += '\n**🚆 Stops:**'
+    content += lobby.get_party_list(numbered=True, include_island=True)
+  else:
+    content += f'\nIsland: **{lobby.island.name}**!'
+    content += '\n**Party:**'
+    content += lobby.get_party_list(numbered=False, include_island=False)
+  json = {
+    'content': content,
+    'components': components,
+    'flags': 4 # supress embeds
+  }
   reply_response = requests.post(url, json=json, headers=headers)
   reply_response.raise_for_status()

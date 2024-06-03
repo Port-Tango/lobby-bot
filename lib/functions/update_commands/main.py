@@ -54,32 +54,31 @@ create_subcommand_group = {
 }
 
 for subcommand_name, mode_info in game_modes.items():
+  subcommand = {
+    "name": subcommand_name,
+    "type": 1,  # 1 is for subcommands
+    "description": f"Creates a matchmaking lobby for {mode_info['type']} game mode",
+    "options": []
+  }
   island_choices = create_island_choices(mode_info['type'])
   if island_choices:
-    subcommand = {
-      "name": subcommand_name,
-      "type": 1,  # 1 is for subcommands
-      "description": f"Creates a matchmaking lobby for {mode_info['type']} game mode",
-      "options": [
-        {
-          "name": "island",
-          "description": "The name of island where the game will be hosted",
-          "type": 3,  # 3 is for string options
-          "required": True,
-          "choices": island_choices
-        },
-        {
-          "name": "players",
-          "description": "Amount of players. Lobby will auto-close after this threshold is met",
-          "type": 4,  # 4 is for integer options
-          "required": True,
-          "choices": create_player_count_choices(
-            mode_info['min_players'], mode_info['max_players'], mode_info['player_count_step']
-          )
-        }
-      ]
-    }
-    create_subcommand_group['options'].append(subcommand)
+    subcommand['options'].append({
+      "name": "island",
+      "description": "The name of island where the game will be hosted",
+      "type": 3,  # 3 is for string options
+      "required": True,
+      "choices": island_choices
+    })
+  subcommand['options'].append({
+    "name": "players",
+    "description": "Amount of players. Lobby will auto-close after this threshold is met",
+    "type": 4,  # 4 is for integer options
+    "required": True,
+    "choices": create_player_count_choices(
+      mode_info['min_players'], mode_info['max_players'], mode_info['player_count_step']
+    )
+  })
+  create_subcommand_group['options'].append(subcommand)
 
 commands[0]['options'].append(create_subcommand_group)
 print(commands)
