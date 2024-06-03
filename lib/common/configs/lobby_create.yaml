@@ -21,3 +21,8 @@ game_modes:
     min_players: 5
     max_players: 10
     player_count_step: 1
+  train:
+    type: "Visit Train"
+    min_players: 2
+    max_players: 10
+    player_count_step: 1
