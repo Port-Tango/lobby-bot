@@ -19,7 +19,11 @@ GAME_TYPES = ['FFA DM', 'CTF', 'Spy Hunt', 'Zombies', 'Visit Train']
 with open('channels.yaml', 'r', encoding='utf-8') as file:
   channels_config = yaml.safe_load(file)
 
+with open('guilds.yaml', 'r', encoding='utf-8') as file:
+  guilds_config = yaml.safe_load(file)
+
 LOBBY_CHANNELS = channels_config[ENV]['lobby_channels']
+GUILD_MAP = guilds_config[ENV]
 
 class LobbyErrorType(Enum):
   PLAYER_IN_OTHER_LOBBY = 'you are in another open lobby'
@@ -68,9 +72,18 @@ class Island(BaseModel):
 
 class Player(BaseModel):
   id: str
-  name: str
+  discord_name: Optional[str] = None
+  guild_id: Optional[str] = None
+  guild_name: Optional[str] = None
   username: str = None
   island: Optional[Island] = None
+
+  @validator('guild_name', always=True, pre=True)
+  def set_guild_name(cls, guild_name, values):
+    guild_id = values.get('guild_id')
+    if guild_id:
+      guild_name = GUILD_MAP.get(guild_id)
+    return guild_name
 
   class Config:
     validate_assignment = True
@@ -81,8 +94,12 @@ class Player(BaseModel):
   def update(self):
     db.collection('players').document(self.id).set(self.dict(), merge=True)
 
-  def set_name(self, name: str):
-    self.name = name
+  def set_discord_name(self, discord_name: str):
+    self.discord_name = discord_name
+    self.update()
+
+  def set_guild_id(self, guild_id: str):
+    self.guild_id = guild_id
     self.update()
 
   def set_username(self, username: str):
@@ -119,9 +136,6 @@ class Lobby(BaseModel):
   players: list[Player]
   player_count: Optional[int] = None
   player_ids: Optional[list[str]] = None
-  player_names: Optional[list[str]] = None
-  player_usernames: Optional[list[Optional[str]]] = None
-  player_island_urls: Optional[list[Optional[str]]] = None
 
   @validator('status', always=True, pre=True)
   def validate_status(cls, status, values):
@@ -133,15 +147,6 @@ class Lobby(BaseModel):
   def update_player_stats(self):
     self.player_count = len(self.players)
     self.player_ids = [player.id for player in self.players]
-    self.player_names = [player.name for player in self.players]
-    self.player_usernames = [
-      player.username if player.username else None
-      for player in self.players
-    ]
-    self.player_island_urls = [
-      player.island.url if player.island else None
-      for player in self.players
-    ]
 
   def create(self):
     self.update_player_stats()
@@ -168,14 +173,17 @@ class Lobby(BaseModel):
     ))
     self.update()
 
-  def add_player(self, player: Player):
-    if player not in self.players:
+  def add_player(self, player_id: str):
+    player_to_add = next((player for player in self.players if player.id == player_id), None)
+    if not player_to_add:
+      player = get_player(player_id=player_id)
       self.players.append(player)
       self.update()
 
-  def remove_player(self, player: Player):
-    if player in self.players:
-      self.players.remove(player)
+  def remove_player(self, player_id: str):
+    player_to_remove = next((player for player in self.players if player.id == player_id), None)
+    if player_to_remove:
+      self.players.remove(player_to_remove)
       self.update()
 
   def randomize_players(self):
@@ -190,7 +198,8 @@ class Lobby(BaseModel):
   def get_party_list(
     self,
     numbered: Optional[bool] = False,
-    include_island: Optional[bool] = False
+    include_island: Optional[bool] = False,
+    include_guilds: Optional[bool] = True
   ):
     list_str = ''
     if numbered:
@@ -200,6 +209,8 @@ class Lobby(BaseModel):
           list_str += f' | 👤: **{player.username}**'
         if include_island and player.island:
           list_str += f' | 🏝️: [{player.island.name}]({player.island.url})'
+        if include_guilds and player.guild_name:
+          list_str += f' | 🛡️: **{player.guild_name}**'
     else:
       for player in self.players:
         list_str += f'\n* <@{player.id}>'
@@ -207,6 +218,8 @@ class Lobby(BaseModel):
           list_str += f' | 👤: **{player.username}**'
         if include_island and player.island:
           list_str += f' | 🏝️: [{player.island.name}]({player.island.url})'
+        if include_guilds and player.guild_name:
+          list_str += f' | 🛡️: **{player.guild_name}**'
     return list_str
 
   class Config:
@@ -219,13 +232,15 @@ def get_open_lobbies() -> List[Lobby]:
     lobbies.append(Lobby(**doc.to_dict()))
   return lobbies
 
-def get_lobby(message_id) -> Optional[Lobby]:
+def get_lobby(message_id: str) -> Optional[Lobby]:
   open_lobbies = get_open_lobbies()
-  for lobby in open_lobbies:
-    for message in lobby.lobby_messages:
-      if message.message_id == message_id:
-        return lobby
-  return None
+  return next(
+    (
+      lobby for lobby in open_lobbies
+      if any(message.message_id == message_id for message in lobby.lobby_messages)
+    ),
+    None
+  )
 
 def get_lobby_players(lobbies: List[Lobby], exclusion_lobby: Optional[Lobby] = None) -> List[str]:
   player_ids = []
