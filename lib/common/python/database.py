@@ -2,6 +2,7 @@ import os
 import random
 from typing import Optional, List, Dict
 from enum import Enum
+import yaml
 import requests
 import firebase_admin
 from firebase_admin import firestore
@@ -12,7 +13,13 @@ from messages import delete_message
 
 REGION = os.getenv('REGION')
 PROJECT_ID = os.getenv('PROJECT_ID')
+ENV = os.getenv('ENV')
 GAME_TYPES = ['FFA DM', 'CTF', 'Spy Hunt', 'Zombies', 'Visit Train']
+
+with open('channels.yaml', 'r', encoding='utf-8') as file:
+  channels_config = yaml.safe_load(file)
+
+LOBBY_CHANNELS = channels_config[ENV]['lobby_channels']
 
 class LobbyErrorType(Enum):
   PLAYER_IN_OTHER_LOBBY = 'you are in another open lobby'
@@ -93,9 +100,15 @@ def get_player(player_id: str) -> Optional[Player]:
     return None
   return Player(**doc.to_dict())
 
+class LobbyMessage(BaseModel):
+  message_id: str
+  channel_id: str
+
 class Lobby(BaseModel):
   id: str
   channel_id: str
+  lobby_messages: Optional[List[LobbyMessage]] = []
+  channel_ids: Optional[List[str]] = LOBBY_CHANNELS
   creation_time: str = now_iso_str()
   creator: Player
   game: Game
@@ -130,6 +143,10 @@ class Lobby(BaseModel):
 
   def create(self):
     self.update_player_stats()
+    self.lobby_messages.append(LobbyMessage(
+      message_id=self.id,
+      channel_id=self.channel_id
+    ))
     db.collection('lobbies').document(self.id).set(self.dict())
 
   def update(self):
@@ -139,7 +156,15 @@ class Lobby(BaseModel):
   def close(self):
     self.status = 'closed'
     self.update()
-    delete_message(channel_id=self.channel_id, message_id=self.id)
+    for message in self.lobby_messages:
+      delete_message(channel_id=message.channel_id, message_id=message.message_id)
+
+  def add_lobby_message(self, message_id: str, channel_id: str):
+    self.lobby_messages.append(LobbyMessage(
+      message_id=message_id,
+      channel_id=channel_id
+    ))
+    self.update()
 
   def add_player(self, player: Player):
     if player not in self.players:
@@ -180,19 +205,20 @@ class Lobby(BaseModel):
   class Config:
     validate_assignment = True
 
-def get_lobby(lobby_id: str) -> Lobby:
-  doc_ref = db.collection('lobbies').document(lobby_id)
-  doc = doc_ref.get()
-  if not doc.exists:
-    raise ValueError('Invalid lobby_id: {lobby_id}')
-  return Lobby(**doc.to_dict())
-
 def get_open_lobbies() -> List[Lobby]:
   lobbies = []
   docs = db.collection('lobbies').where(field_path='status', op_string='==', value='open').stream()
   for doc in docs:
     lobbies.append(Lobby(**doc.to_dict()))
   return lobbies
+
+def get_lobby(message_id) -> Optional[Lobby]:
+  open_lobbies = get_open_lobbies()
+  for lobby in open_lobbies:
+    for message in lobby.lobby_messages:
+      if message.message_id == message_id:
+        return lobby
+  return None
 
 def get_lobby_players(lobbies: List[Lobby], exclusion_lobby: Optional[Lobby] = None) -> List[str]:
   player_ids = []

@@ -1,0 +1,21 @@
+dev:
+  lobby_channels:
+    - '1243674679105818724' #dev primary
+    - '1247653231241199672' #dev secondary
+  party_channels:
+    - '1243253231224623214' #dev primary
+    - '1247681285736894546' #dev secondary
+test:
+  lobby_channels:
+    - '1243693634511966239' #test primary
+    - '1247703891102007337' #test secondary
+  party_channels:
+    - '1243693574986666034' #test primary
+    - '1247703930884980757' #test secondary
+prod:
+  lobby_channels:
+    - '1247704537415028787' #prod primary
+    - '1241138826793979914' #port tango
+  party_channels:
+    - '1247704420154867765' #prod primary
+    - '1243692660523401236' #port tango

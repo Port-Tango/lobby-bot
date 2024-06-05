@@ -65,8 +65,6 @@ steps:
       if [ $_ENV = "dev" ]
       then
         BOT_TOKEN=$$DEV_LOBBY_BOT_TOKEN
-        LOBBY_CHANNEL=$$DEV_LOBBY_BOT_LOBBY_CHANNEL
-        PARTY_CHANNEL=$$DEV_LOBBY_BOT_PARTY_CHANNEL
         BOT_PUBLIC_KEY=$$DEV_LOBBY_BOT_PUBLIC_KEY
         BOT_APP_ID=$$DEV_LOBBY_BOT_APP_ID
         MIN_INSTANCES="--min-instances=0"
@@ -76,8 +74,6 @@ steps:
       if [ $_ENV = "test" ]
       then
         BOT_TOKEN=$$TEST_LOBBY_BOT_TOKEN
-        LOBBY_CHANNEL=$$TEST_LOBBY_BOT_LOBBY_CHANNEL
-        PARTY_CHANNEL=$$TEST_LOBBY_BOT_PARTY_CHANNEL
         BOT_PUBLIC_KEY=$$TEST_LOBBY_BOT_PUBLIC_KEY
         BOT_APP_ID=$$TEST_LOBBY_BOT_APP_ID
         MIN_INSTANCES="--min-instances=0"
@@ -87,8 +83,6 @@ steps:
       if [ $_ENV = "prod" ]
       then
         BOT_TOKEN=$$PROD_LOBBY_BOT_TOKEN
-        LOBBY_CHANNEL=$$PROD_LOBBY_BOT_LOBBY_CHANNEL
-        PARTY_CHANNEL=$$PROD_LOBBY_BOT_PARTY_CHANNEL
         BOT_PUBLIC_KEY=$$PROD_LOBBY_BOT_PUBLIC_KEY
         BOT_APP_ID=$$PROD_LOBBY_BOT_APP_ID
         MIN_INSTANCES="--min-instances=1"
@@ -96,11 +90,10 @@ steps:
       fi
 
       ENV_VARS=(
+        "ENV=$_ENV"
         "PROJECT_ID=$PROJECT_ID"
         "REGION=$_REGION"
         "BOT_TOKEN=$$BOT_TOKEN"
-        "LOBBY_CHANNEL=$$LOBBY_CHANNEL"
-        "PARTY_CHANNEL=$$PARTY_CHANNEL"
         "BOT_PUBLIC_KEY=$$BOT_PUBLIC_KEY"
         "BOT_APP_ID=$$BOT_APP_ID"
       )
@@ -149,18 +142,12 @@ steps:
       echo "All functions deployed successfully."
   secretEnv: 
     - 'DEV_LOBBY_BOT_TOKEN'
-    - 'DEV_LOBBY_BOT_LOBBY_CHANNEL'
-    - 'DEV_LOBBY_BOT_PARTY_CHANNEL'
     - 'DEV_LOBBY_BOT_PUBLIC_KEY'
     - 'DEV_LOBBY_BOT_APP_ID'
     - 'TEST_LOBBY_BOT_TOKEN'
-    - 'TEST_LOBBY_BOT_LOBBY_CHANNEL'
-    - 'TEST_LOBBY_BOT_PARTY_CHANNEL'
     - 'TEST_LOBBY_BOT_PUBLIC_KEY'
     - 'TEST_LOBBY_BOT_APP_ID'
     - 'PROD_LOBBY_BOT_TOKEN'
-    - 'PROD_LOBBY_BOT_LOBBY_CHANNEL'
-    - 'PROD_LOBBY_BOT_PARTY_CHANNEL'
     - 'PROD_LOBBY_BOT_PUBLIC_KEY'
     - 'PROD_LOBBY_BOT_APP_ID'
   waitFor: ['lint-function-sources']
@@ -195,30 +182,18 @@ availableSecrets:
   secretManager:
   - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/dev_lobby_bot_token/versions/1
     env: 'DEV_LOBBY_BOT_TOKEN'
-  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/dev_lobby_bot_lobby_channel/versions/1
-    env: 'DEV_LOBBY_BOT_LOBBY_CHANNEL'
-  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/dev_lobby_bot_party_channel/versions/1
-    env: 'DEV_LOBBY_BOT_PARTY_CHANNEL'
   - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/dev_lobby_bot_public_key/versions/1
     env: 'DEV_LOBBY_BOT_PUBLIC_KEY'
   - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/dev_lobby_bot_app_id/versions/1
     env: 'DEV_LOBBY_BOT_APP_ID'
   - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/test_lobby_bot_token/versions/1
     env: 'TEST_LOBBY_BOT_TOKEN'
-  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/test_lobby_bot_lobby_channel/versions/1
-    env: 'TEST_LOBBY_BOT_LOBBY_CHANNEL'
-  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/test_lobby_bot_party_channel/versions/1
-    env: 'TEST_LOBBY_BOT_PARTY_CHANNEL'
   - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/test_lobby_bot_public_key/versions/1
     env: 'TEST_LOBBY_BOT_PUBLIC_KEY'
   - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/test_lobby_bot_app_id/versions/1
     env: 'TEST_LOBBY_BOT_APP_ID'
   - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/prod_lobby_bot_token/versions/1
     env: 'PROD_LOBBY_BOT_TOKEN'
-  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/prod_lobby_bot_lobby_channel/versions/1
-    env: 'PROD_LOBBY_BOT_LOBBY_CHANNEL'
-  - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/prod_lobby_bot_party_channel/versions/1
-    env: 'PROD_LOBBY_BOT_PARTY_CHANNEL'
   - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/prod_lobby_bot_public_key/versions/1
     env: 'PROD_LOBBY_BOT_PUBLIC_KEY'
   - versionName: projects/$_SECRETS_PROJECT_NUMBER/secrets/prod_lobby_bot_app_id/versions/1

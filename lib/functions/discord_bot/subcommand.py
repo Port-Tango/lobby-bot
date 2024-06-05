@@ -1,5 +1,6 @@
 import os
 from typing import Optional, Any
+import yaml
 from discord import (
   bot_lobby_response,
   bot_followup_response,
@@ -19,7 +20,12 @@ from pydantic import BaseModel, validator
 from utils import now_iso_str, wrap_error_message, wrap_success_message
 from interactions import Interaction, ResponseType
 
-LOBBY_CHANNEL = os.getenv('LOBBY_CHANNEL')
+ENV = os.getenv('ENV')
+
+with open('channels.yaml', 'r', encoding='utf-8') as file:
+  channels_config = yaml.safe_load(file)
+
+LOBBY_CHANNELS = channels_config[ENV]['lobby_channels']
 
 subcommand_game_type_map = {
   'ctf': 'CTF',
@@ -55,7 +61,7 @@ class Subcommand(BaseModel):
 
   @validator('interaction', always=True, pre=True)
   def validate_channel_id(cls, interaction):
-    if interaction.channel.id != LOBBY_CHANNEL:
+    if interaction.channel.id not in LOBBY_CHANNELS:
       handle_subcommand_error(interaction, DiscordErrorType.INVALID_CHANNEL)
     return interaction
 

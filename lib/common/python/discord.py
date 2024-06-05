@@ -1,5 +1,6 @@
 import os
 from enum import Enum
+import yaml
 import requests
 from nacl.exceptions import BadSignatureError
 from nacl.signing import VerifyKey
@@ -10,8 +11,13 @@ from interactions import Interaction
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 BOT_PUBLIC_KEY = os.getenv('BOT_PUBLIC_KEY')
 BOT_APP_ID = os.getenv('BOT_APP_ID')
-PARTY_CHANNEL = os.getenv('PARTY_CHANNEL')
+ENV = os.getenv('ENV')
 BASE_URL = 'https://discord.com/api/v10'
+
+with open('channels.yaml', 'r', encoding='utf-8') as file:
+  channels_config = yaml.safe_load(file)
+
+PARTY_CHANNELS = channels_config[ENV]['party_channels']
 
 headers = {
   'Authorization': f'Bot {BOT_TOKEN}',
@@ -60,7 +66,6 @@ def bot_followup_response(interaction: Interaction, ephemeral: bool, json: dict)
   return reply_response_json['id']
 
 def bot_lobby_response(interaction: Interaction, lobby: Lobby):
-  url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}/messages/@original'
   components = [
     {
       'type': 1,
@@ -90,13 +95,40 @@ def bot_lobby_response(interaction: Interaction, lobby: Lobby):
   json = {
     'content': content,
     'components': components,
+    'allowed_mentions': {
+      'parse': []
+    },
     'flags': 4 # supress embeds
   }
+  # respond to interaction
+  url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction.token}/messages/@original'
   reply_response = requests.patch(url, json=json)
   reply_response.raise_for_status()
+  # mirror lobby state to other lobby channels
+  if len(lobby.lobby_messages) == 1:
+    # create message
+    other_channels = [
+      channel_id for channel_id
+      in lobby.channel_ids if channel_id != interaction.channel.id
+    ]
+    for channel_id in other_channels:
+      url = f'{BASE_URL}/channels/{channel_id}/messages'
+      reply_response = requests.post(url, json=json, headers=headers)
+      reply_response.raise_for_status()
+      message_id = reply_response.json()['id']
+      lobby.add_lobby_message(message_id=message_id, channel_id=channel_id)
+  else:
+    # update message
+    other_lobby_messages = [
+      message for message
+      in lobby.lobby_messages if message.channel_id != interaction.channel.id
+    ]
+    for message in other_lobby_messages:
+      url = f'{BASE_URL}/channels/{message.channel_id}/messages/{message.message_id}'
+      reply_response = requests.patch(url, json=json, headers=headers)
+      reply_response.raise_for_status()
 
 def bot_party_notification(lobby: Lobby):
-  url = f'{BASE_URL}/channels/{PARTY_CHANNEL}/messages'
   if lobby.game.game_type == 'Visit Train':
     starting_island = lobby.players[0].island
     button_label = '🏝️ Join Starting Island 🏝️'
@@ -131,5 +163,7 @@ def bot_party_notification(lobby: Lobby):
     'components': components,
     'flags': 4 # supress embeds
   }
-  reply_response = requests.post(url, json=json, headers=headers)
-  reply_response.raise_for_status()
+  for party_channel in PARTY_CHANNELS:
+    url = f'{BASE_URL}/channels/{party_channel}/messages'
+    reply_response = requests.post(url, json=json, headers=headers)
+    reply_response.raise_for_status()

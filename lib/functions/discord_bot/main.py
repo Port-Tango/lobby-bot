@@ -69,7 +69,7 @@ def handler(request):
     if player:
       custom_id = data['data']['custom_id']
 
-      lobby = get_lobby(lobby_id=interaction.message_id)
+      lobby = get_lobby(message_id=interaction.message_id)
 
       if custom_id == 'join_lobby' and lobby.status == 'open':
         eligibility = get_player_join_eligibility(player=player, lobby=lobby)
