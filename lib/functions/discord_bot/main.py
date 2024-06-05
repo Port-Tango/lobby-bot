@@ -39,11 +39,13 @@ def handler(request):
     if not player:
       player = Player(
         id=data['member']['user']['id'],
-        name=data['member']['user']['global_name']
+        discord_name=data['member']['user']['global_name'],
+        guild_id=data['guild_id']
       )
       player.create()
     else:
-      player.set_name(data['member']['user']['global_name'])
+      player.set_discord_name(data['member']['user']['global_name'])
+      player.set_guild_id(data['guild_id'])
 
   if data['type'] == RequestType.APPLICATION_COMMAND.value:
     subcommand_group = data['data']['options'][0]
@@ -84,7 +86,7 @@ def handler(request):
           )
           abort(400, 'Lobby joining not allowed')
 
-        lobby.add_player(player=player)
+        lobby.add_player(player_id=player.id)
 
         if lobby.player_count >= lobby.game.min_players:
           if lobby.game.game_type == 'Visit Train':
@@ -96,7 +98,7 @@ def handler(request):
           return "OK", 200
 
       elif custom_id == 'leave_lobby' and lobby.status == 'open':
-        lobby.remove_player(player=player)
+        lobby.remove_player(player_id=player.id)
 
         if len(lobby.players) == 0:
           lobby.close()
