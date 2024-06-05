@@ -1,7 +1,6 @@
 from typing import Optional
 import functions_framework
 from database import get_lobby
-from messages import delete_message
 from pydantic import BaseModel, ValidationError
 
 class CloseDeleteLobbyRequest(BaseModel):
@@ -17,12 +16,10 @@ def handler(request):
   except ValidationError as validation_error:
     return f'Problem parsing input. {validation_error}', 400
 
-  lobby = get_lobby(lobby_id=config.lobby_id)
+  lobby = get_lobby(message_id=config.lobby_id)
 
   if config.only_if_open and lobby.status != 'open':
     return "OK", 200
 
   lobby.close()
-  delete_message(channel_id=config.channel_id, message_id=config.lobby_id)
-
   return "OK", 200
