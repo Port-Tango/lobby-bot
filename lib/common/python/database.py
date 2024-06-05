@@ -6,7 +6,7 @@ import yaml
 import requests
 import firebase_admin
 from firebase_admin import firestore
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, root_validator
 from utils import now_iso_str, wrap_error_message
 from cloud_tasks import create_http_task
 from messages import delete_message
@@ -78,11 +78,12 @@ class Player(BaseModel):
   username: str = None
   island: Optional[Island] = None
 
-  @validator('guild_id')
-  def update_guild_name(cls, guild_id, values):
+  @root_validator(pre=True)
+  def update_guild_name(cls, values):
+    guild_id = values.get('guild_id')
     if guild_id:
       values['guild_name'] = GUILD_MAP.get(guild_id)
-    return guild_id
+    return values
 
   class Config:
     validate_assignment = True
