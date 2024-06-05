@@ -12,8 +12,8 @@ LOBBY_CHANNELS = channels_config[ENV]['lobby_channels']
 
 PINNED_MESSAGE = '''
 How to **create** a new lobby:
-1. set your in-game username using `/lobby set username` **you only do this once**
-2. set you your `island_id` using `/lobby set island` **you only do this once**
+1. set your in-game username using `/lobby set username` **you only need to do this once**
+2. set you your `island_id` using `/lobby set island` **you only need to do this once**
   - To find your `island_id`, from Nifty's website navigate `my profile` >> `islands` >> `more details` and get it from the url
 3. start typing `/lobby create` and you will be prompted with different commands for the different game types
 '''
