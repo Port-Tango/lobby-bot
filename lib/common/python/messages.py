@@ -48,3 +48,25 @@ def delayed_delete_ephemeral_message(
     },
     delay_in_seconds=delay_in_seconds
   )
+
+def update_message(channel_id, message_id, content):
+  url = f"{BASE_URL}/{channel_id}/messages/{message_id}"
+  payload = {"content": content}
+  response = requests.patch(url, headers=headers, json=payload)
+  response.raise_for_status()
+
+def create_message(channel_id, content) -> str:
+  url = f"{BASE_URL}/{channel_id}/messages"
+  payload = {"content": content}
+  response = requests.post(url, headers=headers, json=payload)
+  response.raise_for_status()
+  return response.json()['id']
+
+def pin_message(channel_id, message_id):
+  url = f"{BASE_URL}/{channel_id}/pins/{message_id}"
+  response = requests.put(url, headers=headers)
+  response.raise_for_status()
+
+def create_pinned_message(channel_id, content):
+  new_message_id = create_message(channel_id, content)
+  pin_message(channel_id, new_message_id)
