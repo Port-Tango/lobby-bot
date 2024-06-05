@@ -131,6 +131,7 @@ steps:
       deploy_function cleanup_channel $_BOT_SA --trigger-http "256MB"
       deploy_function close_open_lobbies $_BOT_SA --trigger-http "256MB"
       deploy_function update_commands $_BOT_SA --trigger-http "256MB"
+      deploy_function manage_pins $_BOT_SA --trigger-http "256MB"
 
       for pid in "${PIDS[@]}"; do
         wait "$pid"
@@ -158,6 +159,22 @@ steps:
     - '-c'
     - |
       RESPONSE=$(gcloud functions call update_commands --region=$_REGION --project=$PROJECT_ID)
+      RESPONSE=$(echo "$$RESPONSE" | tr -d '[:space:]')
+      echo "Full response: $$RESPONSE"
+      if [ "$$RESPONSE" = "OK" ]; then
+        echo "Cloud Function call succeeded with response 'OK'."
+      else
+        echo "Cloud Function call failed. Response: $$RESPONSE"
+        exit 1
+      fi
+  waitFor: ['deploy-functions']
+- id: 'manage-pins'
+  name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      RESPONSE=$(gcloud functions call manage_pins --region=$_REGION --project=$PROJECT_ID)
       RESPONSE=$(echo "$$RESPONSE" | tr -d '[:space:]')
       echo "Full response: $$RESPONSE"
       if [ "$$RESPONSE" = "OK" ]; then
