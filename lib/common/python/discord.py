@@ -88,9 +88,14 @@ def bot_lobby_response(interaction: Interaction, lobby: Lobby):
   content = f'A new **{lobby.game.game_type}** lobby has been created'
   if lobby.island:
     content += f' for **{lobby.island.name}**!'
+  if lobby.pick_random_island:
+    content += ' for a 🎲 random island from the party!'
   content += '\n**Players in lobby:** '
   content += f'({lobby.player_count}/{lobby.game.min_players})'
-  content += lobby.get_party_list(numbered=False, include_island=False)
+  if lobby.randomize_island:
+    content += lobby.get_party_list(numbered=False, include_island=True)
+  else:
+    content += lobby.get_party_list(numbered=False, include_island=False)
   content += '\n**Lobby status:**\n```diff\n+ OPEN\n```'
   json = {
     'content': content,
@@ -129,13 +134,18 @@ def bot_lobby_response(interaction: Interaction, lobby: Lobby):
       reply_response.raise_for_status()
 
 def bot_party_notification(lobby: Lobby):
+  dice = ''
+  island = lobby.island
+  if lobby.pick_random_island:
+    island = lobby.random_island
+    dice = '🎲 '
   if lobby.game.game_type == 'Visit Train':
     starting_island = lobby.players[0].island
     button_label = '🏝️ Join Starting Island 🏝️'
     button_url = starting_island.url
   else:
-    button_label = f'🏝️ Join {lobby.island.name} 🏝️'
-    button_url = lobby.island.url
+    button_label = f'🏝️ Join {island.name} 🏝️'
+    button_url = island.url
   components = [
     {
       'type': 1,
@@ -155,7 +165,7 @@ def bot_party_notification(lobby: Lobby):
     content += '\n**🚆 Stops:**'
     content += lobby.get_party_list(numbered=True, include_island=True)
   else:
-    content += f'\nIsland: **{lobby.island.name}**!'
+    content += f'\n{dice}Island: **{island.name}**!'
     content += '\n**Party:**'
     content += lobby.get_party_list(numbered=False, include_island=False)
   json = {

@@ -33,6 +33,8 @@ def create_island_choices(game_type):
     for game in island.games:
       if game.game_type == game_type and game.is_featured:
         choices.append({"name": island.name, "value": island.id})
+  if choices and game_type != 'Zombies':
+    choices.insert(0, {"name": "🎲 Random from Party", "value": "random"})
   return choices
 
 def create_player_count_choices(min_players, max_players, step):

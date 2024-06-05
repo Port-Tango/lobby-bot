@@ -113,6 +113,8 @@ class Lobby(BaseModel):
   creator: Player
   game: Game
   island: Optional[Island] = None
+  randomize_island: Optional[bool] = False
+  random_island: Optional[Island] = None
   status: str
   players: list[Player]
   player_count: Optional[int] = None
@@ -178,6 +180,11 @@ class Lobby(BaseModel):
 
   def randomize_players(self):
     random.shuffle(self.players)
+    self.update()
+
+  def pick_random_island(self):
+    players_with_islands = [player for player in self.players if player.island]
+    self.random_island = random.choice(players_with_islands).island
     self.update()
 
   def get_party_list(
@@ -262,7 +269,7 @@ def get_lobby_creation_eligibility(player: Player, game: Game, island: Island) -
       )
     }
 
-  if game.game_type == 'Visit Train' and not player.island:
+  if not player.island:
     return {
       'eligibility': False,
       'error_message': get_lobby_error_message(
