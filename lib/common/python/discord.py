@@ -95,6 +95,9 @@ def bot_lobby_response(interaction: Interaction, lobby: Lobby):
   json = {
     'content': content,
     'components': components,
+    'allowed_mentions': {
+      'parse': []
+    },
     'flags': 4 # supress embeds
   }
   # respond to interaction
