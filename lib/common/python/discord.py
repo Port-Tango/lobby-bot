@@ -88,7 +88,7 @@ def bot_lobby_response(interaction: Interaction, lobby: Lobby):
   content = f'A new **{lobby.game.game_type}** lobby has been created'
   if lobby.island:
     content += f' for **{lobby.island.name}**!'
-  if lobby.pick_random_island:
+  if lobby.randomize_island:
     content += ' for a 🎲 random island from the party!'
   content += '\n**Players in lobby:** '
   content += f'({lobby.player_count}/{lobby.game.min_players})'
@@ -136,7 +136,7 @@ def bot_lobby_response(interaction: Interaction, lobby: Lobby):
 def bot_party_notification(lobby: Lobby):
   dice = ''
   island = lobby.island
-  if lobby.pick_random_island:
+  if lobby.randomize_island:
     island = lobby.random_island
     dice = '🎲 '
   if lobby.game.game_type == 'Visit Train':
