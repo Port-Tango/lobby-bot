@@ -89,6 +89,8 @@ def handler(request):
         if lobby.player_count >= lobby.game.min_players:
           if lobby.game.game_type == 'Visit Train':
             lobby.randomize_players()
+          if lobby.randomize_island:
+            lobby.pick_random_island()
           lobby.close()
           bot_party_notification(lobby=lobby)
           return "OK", 200

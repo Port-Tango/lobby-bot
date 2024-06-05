@@ -123,7 +123,7 @@ class Subcommand(BaseModel):
 def handle_subcommand(subcommand: Subcommand, player: Player):
   if subcommand.subcommand_group == 'create':
     island = None
-    if subcommand.island_id:
+    if subcommand.island_id and subcommand.island_id != 'random':
       island = Island(id=subcommand.island_id)
       island.get_url()
 
@@ -151,6 +151,7 @@ def handle_subcommand(subcommand: Subcommand, player: Player):
       id=subcommand.interaction.message_id,
       channel_id=subcommand.interaction.channel.id,
       creation_time=now_iso_str(),
+      randomize_island=subcommand.island_id == 'random',
       creator=player,
       game=game,
       island=island,
