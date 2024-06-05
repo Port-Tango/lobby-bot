@@ -78,12 +78,11 @@ class Player(BaseModel):
   username: str = None
   island: Optional[Island] = None
 
-  @validator('guild_name', always=True, pre=True)
-  def set_guild_name(cls, guild_name, values):
-    guild_id = values.get('guild_id')
+  @validator('guild_id')
+  def update_guild_name(cls, guild_id, values):
     if guild_id:
-      guild_name = GUILD_MAP.get(guild_id)
-    return guild_name
+      values['guild_name'] = GUILD_MAP.get(guild_id)
+    return guild_id
 
   class Config:
     validate_assignment = True
