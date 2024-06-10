@@ -2,7 +2,6 @@ import os
 import yaml
 import requests
 import functions_framework
-from database import Island
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 BOT_APP_ID = os.getenv('BOT_APP_ID')
@@ -14,9 +13,6 @@ headers = {
   "Content-Type": "application/json"
 }
 
-with open('islands.yaml', 'r', encoding='utf-8') as file:
-  islands_config = yaml.safe_load(file)
-
 with open('lobby_create.yaml', 'r', encoding='utf-8') as file:
   lobby_create_config = yaml.safe_load(file)
 
@@ -24,18 +20,6 @@ with open('lobby_set.yaml', 'r', encoding='utf-8') as file:
   set_subcommand_group = yaml.safe_load(file)
 
 game_modes = lobby_create_config['game_modes']
-
-islands = [Island(**island) for island in islands_config]
-
-def create_island_choices(game_type):
-  choices = []
-  for island in islands:
-    for game in island.games:
-      if game.game_type == game_type and game.is_featured:
-        choices.append({"name": island.name, "value": island.id})
-  if choices and game_type != 'Zombies':
-    choices.insert(0, {"name": "🎲 Random from Party", "value": "random"})
-  return choices
 
 def create_player_count_choices(min_players, max_players, step):
   return [{"name": str(i), "value": i} for i in range(min_players, max_players + 1, step)]
@@ -62,15 +46,23 @@ for subcommand_name, mode_info in game_modes.items():
     "description": f"Creates a matchmaking lobby for {mode_info['type']} game mode",
     "options": []
   }
-  island_choices = create_island_choices(mode_info['type'])
-  if island_choices:
-    subcommand['options'].append({
-      "name": "island",
-      "description": "The name of island where the game will be hosted",
-      "type": 3,  # 3 is for string options
-      "required": True,
-      "choices": island_choices
-    })
+  if mode_info['type'] != 'Visit Train':
+    if mode_info['type'] == 'Zombies':
+      subcommand['options'].append({
+        "name": "island",
+        "description": "The name of island where the game will be hosted",
+        "type": 3,  # 3 is for string options
+        "required": True,
+        "choices": [{'name': 'Zombie Island', 'value': 'dc238f42-0aaa-4a5d-81d7-3e834c493a29'}]
+      })
+    else:
+      subcommand['options'].append({
+        "autocomplete": True,
+        "name": "island",
+        "description": "The name of island where the game will be hosted",
+        "type": 3,  # 3 is for string options
+        "required": True
+      })
   subcommand['options'].append({
     "name": "players",
     "description": "Amount of players. Lobby will auto-close after this threshold is met",

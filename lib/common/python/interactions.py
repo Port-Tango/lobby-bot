@@ -7,10 +7,17 @@ from pydantic import BaseModel
 BOT_APP_ID = os.getenv('BOT_APP_ID')
 BASE_URL = 'https://discord.com/api/v10'
 
+class RequestType(Enum):
+  PING = 1
+  APPLICATION_COMMAND = 2
+  MESSAGE_COMPONENT = 3
+  APPLICATION_COMMAND_AUTOCOMPLETE = 4
+
 class ResponseType(Enum):
   PONG = 1
   DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
   DEFERRED_UPDATE_MESSAGE = 6
+  APPLICATION_COMMAND_AUTOCOMPLETE_RESULT = 8
 
 def get_message_id(interaction_token: str) -> str:
   url = f'{BASE_URL}/webhooks/{BOT_APP_ID}/{interaction_token}/messages/@original'
@@ -24,6 +31,7 @@ class Channel(BaseModel):
 
 class Interaction(BaseModel):
   id: str
+  request_type: RequestType
   token: str
   channel: Channel
   acked: Optional[bool] = False
@@ -37,23 +45,28 @@ class Interaction(BaseModel):
     initial_response_json = initial_response.json()
     self.message_id = initial_response_json['id']
 
-  def ack(self, response_type, ephemeral=False):
+  def ack(self, response_type, ephemeral=False, payload=None):
     url = f'{BASE_URL}/interactions/{self.id}/{self.token}/callback'
 
-    json = {
+    if payload is None:
+      payload = {}
+
+    json_data = {
       'type': response_type,
       'data': {
+        **payload,
         'tts': False
       }
     }
 
     if ephemeral:
-      json['data']['flags'] = 64
+      json_data['data']['flags'] = 64
 
-    reply_response = requests.post(url, json=json)
+    reply_response = requests.post(url, json=json_data)
     reply_response.raise_for_status()
     self.acked = True
-    self.get_message_id()
+    if response_type != ResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT.value:
+      self.get_message_id()
 
   def ack_application_command(self, ephemeral=False):
     self.ack(
@@ -65,6 +78,13 @@ class Interaction(BaseModel):
     self.ack(
       response_type=ResponseType.DEFERRED_UPDATE_MESSAGE.value,
       ephemeral=ephemeral
+    )
+
+  def ack_autocomplete(self, choices, ephemeral=False):
+    self.ack(
+      response_type=ResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT.value,
+      ephemeral=ephemeral,
+      payload={'choices': choices}
     )
 
   class Config:
