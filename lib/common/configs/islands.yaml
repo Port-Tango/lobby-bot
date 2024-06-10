@@ -19,7 +19,7 @@ integrators:
         name: 'Kandy Land'
       - id: 'bf5a68dc-daaa-4d67-80ab-5cad9521a16e'
         name: '25 Bloom Bonsai'
-  - name: 'Mars Cats Voyage'
+  - name: 'Mars Cats'
     islands:
       - id: '0be6e5e4-206b-4cd4-a5b6-0d17a7880078'
         name: 'Sloths Mansion'
