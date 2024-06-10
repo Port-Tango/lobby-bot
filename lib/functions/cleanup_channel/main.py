@@ -38,8 +38,11 @@ def handler(request):
 
         ## lobby messages older than 1 hour. Should be handled by other logic
         if is_bot and content and content != '' and age_seconds > 3600:
-          lobby = get_lobby(message_id)
-          lobby.close()
+          try:
+            lobby = get_lobby(message_id)
+            lobby.close()
+          except:
+            print(f"Failed to close lobby {message_id}")
           messages_to_delete.append(message_id)
 
     if len(messages_to_delete) == 1:
