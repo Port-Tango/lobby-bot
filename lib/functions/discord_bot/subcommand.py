@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Any
+from typing import Optional
 import yaml
 from discord import (
   bot_lobby_response,
@@ -18,7 +18,8 @@ from database import (
 from flask import abort
 from pydantic import BaseModel, validator
 from utils import now_iso_str, wrap_error_message, wrap_success_message
-from interactions import Interaction, ResponseType
+from interactions import Interaction, ResponseType, RequestType
+from island_choices import generate_island_choices
 
 ENV = os.getenv('ENV')
 
@@ -52,12 +53,12 @@ class Subcommand(BaseModel):
   command: str
   subcommand_group: str
   subcommand: str
-  param1: Any
-  param2: Optional[Any] = None
+  subcommand_options: list[dict]
   island_id: Optional[str] = None
   min_players: Optional[int] = None
   username: Optional[str] = None
   game_type: Optional[str] = None
+  query: Optional[str] = None
 
   @validator('interaction', always=True, pre=True)
   def validate_channel_id(cls, interaction):
@@ -83,19 +84,25 @@ class Subcommand(BaseModel):
   def set_island_id(cls, island_id, values):
     subcommand_group = values.get('subcommand_group')
     subcommand = values.get('subcommand')
+    interaction = values.get('interaction')
+    if interaction.request_type != RequestType.APPLICATION_COMMAND:
+      return island_id
     if ((subcommand_group == 'set' and subcommand == 'island') or
       (subcommand_group == 'create' and subcommand != 'train')):
-      island_id = values.get('param1')
+      island_id = values.get('subcommand_options')[0]['value']
     return island_id
 
   @validator('min_players', always=True, pre=True)
   def set_min_players(cls, min_players, values):
     subcommand_group = values.get('subcommand_group')
     subcommand = values.get('subcommand')
+    interaction = values.get('interaction')
+    if interaction.request_type != RequestType.APPLICATION_COMMAND:
+      return min_players
     if subcommand_group == 'create' and subcommand != 'train':
-      min_players = values.get('param2')
+      min_players = values.get('subcommand_options')[1]['value']
     if subcommand_group == 'create' and subcommand == 'train':
-      min_players = values.get('param1')
+      min_players = values.get('subcommand_options')[0]['value']
     return min_players
 
   @validator('username', always=True, pre=True)
@@ -103,7 +110,7 @@ class Subcommand(BaseModel):
     subcommand_group = values.get('subcommand_group')
     subcommand = values.get('subcommand')
     if subcommand_group == 'set' and subcommand == 'username':
-      username = values.get('param1')
+      username = values.get('subcommand_options')[0]['value']
     return username
 
   @validator('game_type', always=True, pre=True)
@@ -120,7 +127,18 @@ class Subcommand(BaseModel):
       raise ValueError('Invalid game type')
     return game_type
 
+  @validator('query', always=True, pre=True)
+  def set_query(cls, query, values):
+    interaction = values.get('interaction')
+    if interaction.request_type == RequestType.APPLICATION_COMMAND_AUTOCOMPLETE:
+      query = values.get('subcommand_options')[0]['value']
+    return query
+
 def handle_subcommand(subcommand: Subcommand, player: Player):
+  if subcommand.interaction.request_type == RequestType.APPLICATION_COMMAND_AUTOCOMPLETE:
+    choices = generate_island_choices(query=subcommand.query)
+    subcommand.interaction.ack_autocomplete(choices=choices)
+    return
   if subcommand.subcommand_group == 'create':
     island = None
     if subcommand.island_id and subcommand.island_id != 'random':

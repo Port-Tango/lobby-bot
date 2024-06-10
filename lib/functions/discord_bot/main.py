@@ -6,7 +6,6 @@ from discord import (
   bot_party_notification,
   bot_followup_response,
   Interaction,
-  RequestType,
   DiscordErrorType,
 )
 from database import (
@@ -16,7 +15,7 @@ from database import (
   Player
 )
 from subcommand import handle_subcommand, Subcommand
-from interactions import ResponseType
+from interactions import ResponseType, RequestType
 
 @functions_framework.http
 def handler(request):
@@ -31,7 +30,8 @@ def handler(request):
   if data['type'] == RequestType.PING.value:
     return jsonify({'type': ResponseType.PONG.value})
 
-  interaction = Interaction(**data)
+  interaction = Interaction(**{**data, **{'request_type': RequestType(data['type'])}})
+  print(interaction.dict())
 
   if 'member' in data:
     player_id = data['member']['user']['id']
@@ -47,7 +47,10 @@ def handler(request):
       player.set_discord_name(data['member']['user']['global_name'])
       player.set_guild_id(data['guild_id'])
 
-  if data['type'] == RequestType.APPLICATION_COMMAND.value:
+  if data['type'] in [
+    RequestType.APPLICATION_COMMAND.value,
+    RequestType.APPLICATION_COMMAND_AUTOCOMPLETE.value
+  ]:
     subcommand_group = data['data']['options'][0]
 
     subcommand_data = {
@@ -55,6 +58,7 @@ def handler(request):
       'command': data['data']['name'],
       'subcommand_group': subcommand_group['name'],
       'subcommand': subcommand_group['options'][0]['name'],
+      'subcommand_options': subcommand_group['options'][0]['options'],
       'param1': subcommand_group['options'][0]['options'][0]['value']
     }
 

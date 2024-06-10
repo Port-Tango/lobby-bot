@@ -24,11 +24,6 @@ headers = {
   'Content-Type': 'application/json'
 }
 
-class RequestType(Enum):
-  PING = 1
-  APPLICATION_COMMAND = 2
-  MESSAGE_COMPONENT = 3
-
 class DiscordErrorType(Enum):
   INVALID_SIGNATURE = 'Invalid signature'
   COMMAND_IN_THREAD = 'Command was used in a thread'

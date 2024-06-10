@@ -1,27 +1,29 @@
-- id: 'ef023e57-2e5f-40af-b826-aa23f430e3b7'
-  name: 'Liquidity Pool'
-  games:
-    - game_type: 'FFA DM'
-      is_featured: true
-    - game_type: 'CTF'
-      is_featured: true
-    - game_type: 'Spy Hunt'
-      is_featured: true
-- id: '51fb649f-e1fb-45f0-9de0-ec5aa041bbb4'
-  name: 'Tangos Wild West'
-  games:
-    - game_type: 'FFA DM'
-      is_featured: true
-    - game_type: 'CTF'
-      is_featured: true
-    - game_type: 'Spy Hunt'
-      is_featured: true
-- id: 'dc238f42-0aaa-4a5d-81d7-3e834c493a29'
-  name: 'Zombie Island'
-  games:
-    - game_type: 'Zombies'
-      is_featured: true
-    - game_type: 'FFA DM'
-      is_featured: true
-    - game_type: 'Spy Hunt'
-      is_featured: false
+dev:
+  islands:
+    - id: 'ef023e57-2e5f-40af-b826-aa23f430e3b7'
+      name: 'Liquidity Pool'
+port_tango:
+  islands:
+    - id: '0aa1e433-8d8c-40ad-8e06-79865e794ad2'
+      name: 'Moon Base Tango'
+    - id: '51fb649f-e1fb-45f0-9de0-ec5aa041bbb4'
+      name: 'Tangos Wild West'
+    - id: '7a3821ca-8e2d-4bb1-8483-d6491f66f94a'
+      name: 'Tangos Tree Fort 50K'
+integrators:
+  - name: 'Bloom Brigade'
+    islands:
+      - id: '5bbd915c-374e-480a-a430-d536a7912470'
+        name: 'Frens Gaming'
+      - id: '7e14bbc6-fd81-4350-ade6-1d993be39c20'
+        name: 'Kandy Land'
+      - id: 'bf5a68dc-daaa-4d67-80ab-5cad9521a16e'
+        name: '25 Bloom Bonsai'
+  - name: 'Mars Cat Voyage'
+    islands:
+      - id: '0be6e5e4-206b-4cd4-a5b6-0d17a7880078'
+        name: 'Sloths Mansion'
+      - id: 'ef239a61-bba3-453a-989b-73a49b90f688'
+        name: 'Win at Willies'
+      - id: 'f30985d3-534a-4466-81b8-62ac4d87ed18'
+        name: "Biggunn's Arena"
