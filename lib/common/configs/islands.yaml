@@ -27,3 +27,7 @@ integrators:
         name: 'Win at Willies'
       - id: 'f30985d3-534a-4466-81b8-62ac4d87ed18'
         name: "Biggunn's Arena"
+  - name: 'Feather Frogs'
+    islands:
+      - id: '69faf1fa-7984-47fb-b47a-9c6dd0d5eece'
+        name: 'FeatherFrogs CS'
