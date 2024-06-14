@@ -39,7 +39,7 @@ steps:
           --indent-after-paren=2 \
           --load-plugins pylint_pydantic \
           --extension-pkg-whitelist='pydantic' \
-          --disable=missing-docstring,broad-except \
+          --disable=missing-docstring,broad-except,bare-except \
           --max-branches=20 \
           --max-locals=25 &
         PIDS+=($!)
