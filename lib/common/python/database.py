@@ -268,7 +268,7 @@ def get_lobby_error_message(
     message += f' on {island.name}'
   message += f' but were denied because {error_type.value}.'
   if error_type not in [LobbyErrorType.NO_IN_GAME_USERNAME, LobbyErrorType.NO_ISLAND]:
-    message += f' Shame on you, {player.name}! Shame! Shame! Shame!'
+    message += f' Shame on you, {player.discord_name}! Shame! Shame! Shame!'
   return wrap_error_message(message)
 
 def get_lobby_creation_eligibility(player: Player, game: Game, island: Island) -> Dict:
