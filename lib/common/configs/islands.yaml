@@ -31,3 +31,7 @@ integrators:
     islands:
       - id: '69faf1fa-7984-47fb-b47a-9c6dd0d5eece'
         name: 'FeatherFrogs CS'
+  - name: 'MisfitPIXELS'
+    islands:
+      - id: '49fbd927-3cd6-4de0-8ebf-245bb1bab521'
+        name: 'MisfitPIXELS City'
