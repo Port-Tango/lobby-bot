@@ -32,13 +32,25 @@ def pull_islands_batch(limit: int, offset: int, order: str = None) -> dict:
     print(f"Error fetching islands with offset {offset}: {error}")
     return {}
 
+# Function to generate prefixes
+def generate_search_tokens(name: str) -> list[str]:
+  tokens = name.lower().split()  # Convert to lowercase and split
+  prefixes = []
+  for token in tokens:
+    for i in range(len(token)):
+      prefixes.append(token[:i+1])  # Add all prefixes up to the current character'
+  return tokens + prefixes
+
 def validate_islands(islands: list[dict]) -> list[dict]:
   return [
     Island(**{
       'id': island['valueId'],
       'name': island['name'],
+      'search_tokens': generate_search_tokens(name=island['name']),
       'url': f"https://niftyis.land/{island['owner']['username']}/{island['deeplinkIndex']}",
-      'player_count': island['playerCount']
+      'player_count': island['playerCount'],
+      'owner': island['owner'],
+      'favorited_count': island['favoritedCount']
     }).dict() for island in islands if island['bloomsPlaced'] >= 25
   ]
 

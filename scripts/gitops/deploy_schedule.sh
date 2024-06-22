@@ -7,6 +7,7 @@ SCHEDULE="$2"
 OATH_SA="$3"
 REGION="$4"
 PROJECT_ID="$5"
+MESSAGE="${6:-'{}'}"  # default to "{}" if no message is provided
 ENDPOINT="https://${REGION}-${PROJECT_ID}.cloudfunctions.net/${FUNCTION_NAME}"
 
 gcloud scheduler jobs create http ${FUNCTION_NAME}_scheduler \
@@ -15,7 +16,7 @@ gcloud scheduler jobs create http ${FUNCTION_NAME}_scheduler \
   --uri="${ENDPOINT}" \
   --schedule="${SCHEDULE}" \
   --http-method=POST \
-  --message-body='{}' \
+  --message-body="${MESSAGE}" \
   --headers='Content-Type=application/json' \
 || \
 gcloud scheduler jobs update http ${FUNCTION_NAME}_scheduler \
@@ -24,4 +25,4 @@ gcloud scheduler jobs update http ${FUNCTION_NAME}_scheduler \
   --uri="${ENDPOINT}" \
   --schedule="${SCHEDULE}" \
   --http-method=POST \
-  --message-body='{}' \
+  --message-body="${MESSAGE}" \

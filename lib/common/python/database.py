@@ -52,12 +52,27 @@ class Game(BaseModel):
   class Config:
     validate_assignment = True
 
+class IslandOwner(BaseModel):
+  id: str
+  username: str
+  nickname: Optional[str] = None
+
+  @validator('nickname', always=True, pre=True)
+  def validate_nickname(cls, nickname, values):
+    username = values.get('username')
+    if username and not nickname:
+      nickname = username
+    return nickname
+
 class Island(BaseModel):
   id: str
   name: Optional[str] = None
+  search_tokens: Optional[List[str]] = None
   games: List[Game] = []
   url: Optional[str] = None
   player_count: Optional[int] = None
+  owner: Optional[IslandOwner] = None
+  favorited_count: Optional[int] = None
 
   class Config:
     validate_assignment = True
