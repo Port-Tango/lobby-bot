@@ -3,25 +3,27 @@
 # A script to create or update an existing Cloud Scheduler job for a Google Cloud Function
 
 FUNCTION_NAME="$1"
-SCHEDULE="$2"
-OATH_SA="$3"
-REGION="$4"
-PROJECT_ID="$5"
+SCHEDULE_NAME="$2"
+SCHEDULE="$3"
+OATH_SA="$4"
+REGION="$5"
+PROJECT_ID="$6"
+MESSAGE="${7:-'{}'}"  # default to "{}" if no message is provided
 ENDPOINT="https://${REGION}-${PROJECT_ID}.cloudfunctions.net/${FUNCTION_NAME}"
 
-gcloud scheduler jobs create http ${FUNCTION_NAME}_scheduler \
+gcloud scheduler jobs create http ${SCHEDULE_NAME}_scheduler \
   --location=$REGION \
   --oidc-service-account-email=$OATH_SA \
   --uri="${ENDPOINT}" \
   --schedule="${SCHEDULE}" \
   --http-method=POST \
-  --message-body='{}' \
+  --message-body="${MESSAGE}" \
   --headers='Content-Type=application/json' \
 || \
-gcloud scheduler jobs update http ${FUNCTION_NAME}_scheduler \
+gcloud scheduler jobs update http ${SCHEDULE_NAME}_scheduler \
   --location=$REGION \
   --oidc-service-account-email=$OATH_SA \
   --uri="${ENDPOINT}" \
   --schedule="${SCHEDULE}" \
   --http-method=POST \
-  --message-body='{}' \
+  --message-body="${MESSAGE}" \

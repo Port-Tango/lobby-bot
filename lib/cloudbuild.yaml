@@ -132,6 +132,7 @@ steps:
       deploy_function close_open_lobbies $_BOT_SA --trigger-http "256MB"
       deploy_function update_commands $_BOT_SA --trigger-http "256MB"
       deploy_function manage_pins $_BOT_SA --trigger-http "256MB"
+      deploy_function index_islands $_BOT_SA --trigger-http "256MB" --timeout="600s"
 
       for pid in "${PIDS[@]}"; do
         wait "$pid"
@@ -190,7 +191,9 @@ steps:
   args:
     - '-c'
     - |
-      bash scripts/gitops/deploy_schedule.sh cleanup_channel "* * * * *" $_BOT_SA $_REGION $PROJECT_ID
+      bash scripts/gitops/deploy_schedule.sh cleanup_channel cleanup_channel "* * * * *" $_BOT_SA $_REGION $PROJECT_ID
+      bash scripts/gitops/deploy_schedule.sh index_islands index_top_islands "* * * * *" $_BOT_SA $_REGION $PROJECT_ID "{ \"request_type\": \"top\" }"
+      bash scripts/gitops/deploy_schedule.sh index_islands index_all_islands "0 1 * * *" $_BOT_SA $_REGION $PROJECT_ID "{ \"request_type\": \"all\" }"
   waitFor: ['deploy-functions']
 substitutions:
   _FUNCTIONS_PATH: 'lib/functions'

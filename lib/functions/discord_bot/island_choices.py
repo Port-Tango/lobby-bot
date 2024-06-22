@@ -1,44 +1,65 @@
-import random
-import copy
-import yaml
+from firebase_admin import firestore
 
-with open('islands.yaml', 'r', encoding='utf-8') as file:
-  islands_config = yaml.safe_load(file)
+db = firestore.client()
+islands_collection_ref = db.collection('islands')
+top_10_document_ref = db.collection('top_10_islands').document('latest')
 
-def generate_island_choices(query, config=islands_config):
-  # Make a deep copy of the configuration to avoid modifying the original
-  config_copy = copy.deepcopy(config)
+def get_top_10_islands():
+  try:
+    top_10_doc = top_10_document_ref.get()
+    if not top_10_doc.exists:
+      print("No top 10 islands document found")
+      return []
+    islands = top_10_doc.to_dict().get('islands', [])
+    return islands
+  except Exception as error:
+    print(f"Error fetching top 10 islands: {error}")
+    return []
 
-  # Extract and shuffle dev islands
-  dev_islands = config_copy['dev']['islands']
-  random.shuffle(dev_islands)
+def search_islands(query_str: str):
+  query_tokens = query_str.lower().split()
+  try:
+    island_results = islands_collection_ref.where(
+      'search_tokens',
+      'array_contains_any',
+      query_tokens
+    ).stream()
+    islands = [doc.to_dict() for doc in island_results]
+    islands = sorted(islands, key=lambda island: island.get('favorited_count', 0), reverse=True)
+    return islands
+  except Exception as error:
+    print(f"Error searching islands: {error}")
+    return []
 
-  # Extract and shuffle Port Tango islands
-  port_tango_islands = config_copy['port_tango']['islands']
-  random.shuffle(port_tango_islands)
-
-  # Extract other integrators and shuffle their islands
-  other_integrators = config_copy['integrators']
-  for integrator in other_integrators:
-    random.shuffle(integrator['islands'])
-
-  # Randomize the order of the integrators themselves
-  random.shuffle(other_integrators)
-
-  # Initialize lists to hold the round-robin order
-  round_robin_lists = (
-    [dev_islands, port_tango_islands] +
-    [integrator['islands'] for integrator in other_integrators]
-  )
-
-  # Perform round-robin selection until all lists are exhausted
+def format_choices(
+  islands: list[dict],
+  include_owner: bool = True,
+  include_player_count: bool = False,
+  include_favorited_count: bool = False,
+  include_self: bool = True
+):
   choices = []
-  while any(round_robin_lists):
-    for island_list in round_robin_lists:
-      if island_list:  # Check if the current list is not exhausted
-        island = island_list.pop(0)
-        choices.append({'name': island['name'], 'value': island['id']})
-  choices.insert(0, {"name": "🎲 Random from Party", "value": "random"})
+  for island in islands:
+    name = island['name']
+    if include_owner:
+      name += f" | 👤 {island['owner']['nickname']}"
+    if include_player_count:
+      name += f" | 🟢 {island['player_count']} online"
+    if include_favorited_count:
+      name += f" | ⭐ {island['favorited_count']} favorited"
+    choices.append({
+      'name': name,
+      'value': island['id']
+    })
+  if include_self:
+    choices.insert(0, {"name": "🏠 My Island", "value": "my"})
+  return choices
 
-  filtered_choices = [choice for choice in choices if query.lower() in choice['name'].lower()]
-  return filtered_choices
+def generate_island_choices(query:str)->list[dict]:
+  if not query or query == "":
+    islands = get_top_10_islands()
+    choices = format_choices(islands, include_player_count=True)
+    return choices
+  islands = search_islands(query)
+  choices = format_choices(islands, include_player_count=False, include_favorited_count=True)
+  return choices
