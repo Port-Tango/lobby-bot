@@ -58,7 +58,8 @@ def validate_islands(islands: list[dict]) -> list[dict]:
       'player_count': island['playerCount'],
       'owner': island['owner'],
       'favorited_count': island['favoritedCount']
-    }).dict() for island in islands if island['bloomsPlaced'] >= 25
+    }).dict()
+    for island in islands if island['bloomsPlaced'] >= 25 and island['favoritedCount'] >= 5
   ]
 
 def process_and_write_batch(ref: str, islands: list[dict]):
