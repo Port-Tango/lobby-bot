@@ -10,7 +10,7 @@ REGION="$5"
 PROJECT_ID="$6"
 MESSAGE="${7:-'{}'}"  # default to "{}" if no message is provided
 ENDPOINT="https://${REGION}-${PROJECT_ID}.cloudfunctions.net/${FUNCTION_NAME}"
-TIMEOUT="600s"  # Set your desired timeout here, e.g., 180 seconds
+TIMEOUT="600s"
 
 gcloud scheduler jobs create http ${SCHEDULE_NAME}_scheduler \
   --location=$REGION \
@@ -20,7 +20,7 @@ gcloud scheduler jobs create http ${SCHEDULE_NAME}_scheduler \
   --http-method=POST \
   --message-body="${MESSAGE}" \
   --headers='Content-Type=application/json' \
-  --timeout=${TIMEOUT} \
+  --attempt-deadline=${TIMEOUT} \
 || \
 gcloud scheduler jobs update http ${SCHEDULE_NAME}_scheduler \
   --location=$REGION \
@@ -29,4 +29,4 @@ gcloud scheduler jobs update http ${SCHEDULE_NAME}_scheduler \
   --schedule="${SCHEDULE}" \
   --http-method=POST \
   --message-body="${MESSAGE}" \
-  --timeout=${TIMEOUT}
+  --attempt-deadline=${TIMEOUT}
