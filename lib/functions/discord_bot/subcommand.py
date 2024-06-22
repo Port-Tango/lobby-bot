@@ -141,9 +141,12 @@ def handle_subcommand(subcommand: Subcommand, player: Player):
     return
   if subcommand.subcommand_group == 'create':
     island = None
-    if subcommand.island_id and subcommand.island_id != 'random':
+    if subcommand.island_id and subcommand.island_id not in ['my', 'random']:
       island = Island(id=subcommand.island_id)
       island.get_url()
+
+    if subcommand.island_id == 'my':
+      island = player.island
 
     game = Game(
       game_type=subcommand.game_type,

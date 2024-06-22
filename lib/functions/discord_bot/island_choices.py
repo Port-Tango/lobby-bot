@@ -35,6 +35,7 @@ def format_choices(
   islands: list[dict],
   include_owner: bool = True,
   include_player_count: bool = False,
+  include_favorited_count: bool = False,
   include_self: bool = True
 ):
   choices = []
@@ -44,6 +45,8 @@ def format_choices(
       name += f" | 👤 {island['owner']['nickname']}"
     if include_player_count:
       name += f" | 🟢 {island['player_count']} online"
+    if include_favorited_count:
+      name += f" | ⭐ {island['favorited_count']} favorited"
     choices.append({
       'name': name,
       'value': island['id']
@@ -58,5 +61,5 @@ def generate_island_choices(query:str)->list[dict]:
     choices = format_choices(islands, include_player_count=True)
     return choices
   islands = search_islands(query)
-  choices = format_choices(islands, include_player_count=False)
+  choices = format_choices(islands, include_player_count=False, include_favorited_count=True)
   return choices
