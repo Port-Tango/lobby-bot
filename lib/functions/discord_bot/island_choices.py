@@ -17,12 +17,11 @@ def get_top_10_islands():
     return []
 
 def search_islands(query_str: str):
-  query_tokens = query_str.lower().split()
   try:
     island_results = islands_collection_ref.where(
       'search_tokens',
-      'array_contains_any',
-      query_tokens
+      'array_contains',
+      query_str.lower()
     ).stream()
     islands = [doc.to_dict() for doc in island_results]
     islands = sorted(islands, key=lambda island: island.get('favorited_count', 0), reverse=True)

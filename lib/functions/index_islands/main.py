@@ -33,14 +33,20 @@ def pull_islands_batch(limit: int, offset: int, order: str = None) -> dict:
     print(f"Error fetching islands with offset {offset}: {error}")
     return {}
 
-# Function to generate prefixes
 def generate_search_tokens(name: str) -> list[str]:
-  tokens = name.lower().split()  # Convert to lowercase and split
   prefixes = []
-  for token in tokens:
-    for i in range(len(token)):
-      prefixes.append(token[:i+1])  # Add all prefixes up to the current character'
-  return tokens + prefixes
+  tokens = name.lower().split()
+  adjacent_token_strings = []
+
+  for i in range(len(tokens) - 1):
+    adjacent_token_strings.append(f"{tokens[i]} {tokens[i + 1]}")
+  adjacent_token_strings.append(f"{tokens[-1]}")
+
+  for token_string in adjacent_token_strings:
+    for i in range(len(token_string)):
+      prefixes.append(token_string[:i+1])
+
+  return prefixes
 
 def validate_islands(islands: list[dict]) -> list[dict]:
   return [
