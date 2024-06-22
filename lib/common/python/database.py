@@ -57,6 +57,7 @@ class Island(BaseModel):
   name: Optional[str] = None
   games: List[Game] = []
   url: Optional[str] = None
+  player_count: Optional[int] = None
 
   class Config:
     validate_assignment = True
