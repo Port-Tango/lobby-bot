@@ -2,19 +2,15 @@ from firebase_admin import firestore
 
 db = firestore.client()
 islands_collection_ref = db.collection('islands')
-top_10_islands_collection_ref = db.collection('top_10_islands')
+top_10_document_ref = db.collection('top_10_islands').document('latest')
 
 def get_top_10_islands():
   try:
-    top_10_islands = top_10_islands_collection_ref.stream()
-    top_10_islands = sorted(
-      top_10_islands,
-      key=lambda island: (
-        -island.to_dict()['player_count'],
-        -island.to_dict()['favorited_count']
-      )
-    )
-    islands = [doc.to_dict() for doc in top_10_islands]
+    top_10_doc = top_10_document_ref.get()
+    if not top_10_doc.exists:
+      print("No top 10 islands document found")
+      return []
+    islands = top_10_doc.to_dict().get('islands', [])
     return islands
   except Exception as error:
     print(f"Error fetching top 10 islands: {error}")
@@ -29,6 +25,7 @@ def search_islands(query_str: str):
       query_tokens
     ).stream()
     islands = [doc.to_dict() for doc in island_results]
+    islands = sorted(islands, key=lambda island: island.get('favorited_count', 0), reverse=True)
     return islands
   except Exception as error:
     print(f"Error searching islands: {error}")
@@ -36,14 +33,17 @@ def search_islands(query_str: str):
 
 def format_choices(
   islands: list[dict],
+  include_owner: bool = True,
   include_player_count: bool = False,
-  include_self: bool = False
+  include_self: bool = True
 ):
   choices = []
   for island in islands:
     name = island['name']
+    if include_owner:
+      name += f" | 👤 {island['owner']['nickname']}"
     if include_player_count:
-      name = f"{name} | 👤 {island['owner']['nickname']} | 🟢 {island['player_count']} online"
+      name += f" | 🟢 {island['player_count']} online"
     choices.append({
       'name': name,
       'value': island['id']
@@ -55,8 +55,8 @@ def format_choices(
 def generate_island_choices(query:str)->list[dict]:
   if not query or query == "":
     islands = get_top_10_islands()
-    choices = format_choices(islands, include_player_count=True, include_self=True)
+    choices = format_choices(islands, include_player_count=True)
     return choices
   islands = search_islands(query)
-  choices = format_choices(islands, include_player_count=False, include_self=True)
+  choices = format_choices(islands, include_player_count=False)
   return choices

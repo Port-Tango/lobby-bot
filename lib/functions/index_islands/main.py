@@ -4,6 +4,7 @@ from flask import jsonify
 import functions_framework
 from pydantic import BaseModel, validator, ValidationError
 from database import Island
+from utils import now_iso_str
 
 ISLANDS_ENDPOINT = 'https://api.niftyisland.com/api/v2/islands'
 
@@ -88,27 +89,21 @@ def batch_write_to_firestore(collection, items):
   except Exception as error:
     print(f"Error writing to Firestore: {error}")
 
-def get_existing_top_10_ids() -> set:
-  try:
-    snapshot = top_10_collection_ref.get()
-    return {doc.id for doc in snapshot}
-  except Exception as error:
-    print(f"Error fetching existing top 10 island IDs: {error}")
-    return set()
-
 def index_top_10_islands():
   try:
-    current_top_10_ids = get_existing_top_10_ids()
     top_10_islands_response = pull_islands_batch(limit=10, offset=0, order='active')
     top_10_islands = top_10_islands_response.get('items', [])
-    new_top_10_ids = {island['id'] for island in top_10_islands}
-    islands_to_delete = current_top_10_ids - new_top_10_ids
-    process_and_write_batch(ref=top_10_collection_ref, islands=top_10_islands)
-    batch_delete = db.batch()
-    for island_id in islands_to_delete:
-      doc_ref = top_10_collection_ref.document(island_id)
-      batch_delete.delete(doc_ref)
-    batch_delete.commit()
+    top_10_islands_data = validate_islands(top_10_islands)
+
+    # Add a timestamp to the document
+    top_10_doc = {
+      'timestamp': now_iso_str(),
+      'islands': top_10_islands_data
+    }
+
+    # Write the top 10 islands data to a new document with the current timestamp
+    top_10_collection_ref.document('latest').set(top_10_doc)
+    print("Successfully updated top 10 islands document")
   except Exception as error:
     print(f"Error fetching and storing top 10 islands: {error}")
 
