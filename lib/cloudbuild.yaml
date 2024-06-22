@@ -132,6 +132,7 @@ steps:
       deploy_function close_open_lobbies $_BOT_SA --trigger-http "256MB"
       deploy_function update_commands $_BOT_SA --trigger-http "256MB"
       deploy_function manage_pins $_BOT_SA --trigger-http "256MB"
+      deploy_function index_islands $_BOT_SA --trigger-http "256MB" --timeout="600s"
 
       for pid in "${PIDS[@]}"; do
         wait "$pid"
