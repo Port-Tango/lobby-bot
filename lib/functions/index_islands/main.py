@@ -37,7 +37,7 @@ def generate_search_tokens(name: str) -> list[str]:
   prefixes = []
   tokens = name.lower().split()
   adjacent_token_strings = []
-  
+
   for i in range(len(tokens) - 1):
     adjacent_token_strings.append(f"{tokens[i]} {tokens[i + 1]}")
   adjacent_token_strings.append(f"{tokens[-1]}")
